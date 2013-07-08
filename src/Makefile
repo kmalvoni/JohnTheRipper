@@ -28,14 +28,20 @@ OMPFLAGS =
 #OMPFLAGS = -fopenmp -D_FORTIFY_SOURCE=0
 # Sun Studio with OpenMP (set the OMP_NUM_THREADS env var at runtime)
 #OMPFLAGS = -xopenmp
-CFLAGS = -c -Wall -Wdeclaration-after-statement -O2 -fomit-frame-pointer $(OMPFLAGS)
+CFLAGS = -c -g -Wall -Wdeclaration-after-statement -O0 -fomit-frame-pointer $(OMPFLAGS)
 # CFLAGS for use on the main john.c file only
 CFLAGS_MAIN = $(CFLAGS)
 ASFLAGS = -c $(OMPFLAGS)
-LDFLAGS = -s $(OMPFLAGS)
+LDFLAGS = $(OMPFLAGS)
 OPT_NORMAL = -funroll-loops
 # Remove the "-Os" if you're using an ancient version of gcc
 OPT_INLINE = -Os -funroll-loops -finline-functions
+
+#Parallella
+ESDK=${EPIPHANY_HOME}
+ELIBS=${ESDK}/tools/host/lib
+EINCS=${ESDK}/tools/host/include
+ELDF=${ESDK}/bsps/current/fast.ldf
 
 JOHN_OBJS = \
 	DES_fmt.o DES_std.o DES_bs.o DES_bs_b.o \
@@ -76,6 +82,9 @@ BENCH_OBJS = \
 	$(BENCH_BF_OBJS_DEPEND) \
 	bench.o best.o common.o config.o formats.o math.o memory.o miscnl.o \
 	params.o path.o signals.o tty.o
+	
+PARALLELLA_OBJS = \
+	../run/parallella_bf_fmt.elf
 
 PROJ = ../run/john ../run/unshadow ../run/unafs ../run/unique
 PROJ_DOS = ../run/john.bin ../run/john.com \
@@ -98,6 +107,7 @@ default:
 	@echo "linux-x86-mmx            Linux, x86 32-bit with MMX (for old computers)"
 	@echo "linux-x86-any            Linux, x86 32-bit (for truly ancient computers)"
 	@echo "linux-arm32le-neon       Linux, ARM 32-bit little-endian w/NEON (best)"
+	@echo "linux-arm32le-neon-parallella" Linux, ARM 32-bit little-endian w/NEON, Parallella
 	@echo "linux-arm32le            Linux, ARM 32-bit little-endian"
 	@echo "linux-alpha              Linux, Alpha"
 	@echo "linux-sparc              Linux, SPARC 32-bit"
@@ -249,6 +259,15 @@ linux-arm32le-neon:
 		JOHN_OBJS="$(JOHN_OBJS) c3_fmt.o" \
 		CFLAGS="$(CFLAGS) -mfpu=neon -DHAVE_CRYPT" \
 		LDFLAGS="$(LDFLAGS) -lcrypt"
+
+linux-arm32le-neon-parallella:
+	$(LN) arm32le.h arch.h
+	$(MAKE) $(PROJ) \
+		JOHN_OBJS="$(JOHN_OBJS) $(PARALLELLA_OBJS) c3_fmt.o" \
+		CFLAGS="$(CFLAGS) -mfpu=neon -DHAVE_CRYPT -DHAVE_PARALLELLA" \
+		LDFLAGS="$(LDFLAGS) -L${ELIBS} -lcrypt -le-hal"
+	e-gcc -std=c99 -T ${ELDF} parallella_e_bcrypt.c -O2 -o ../run/parallella_e_bcrypt.elf -le-lib
+	e-objcopy --srec-forceS3 --output-target srec ../run/parallella_e_bcrypt.elf ../run/parallella_e_bcrypt.srec
 
 linux-arm32le:
 	$(LN) arm32le.h arch.h
@@ -846,6 +865,9 @@ generic.h:
 
 bench: $(BENCH_OBJS)
 	$(LD) $(BENCH_OBJS) $(LDFLAGS) -o bench
+	
+../run/parallella_bf_fmt.elf: parallella_bf_fmt.c
+	$(CC) -c parallella_bf_fmt.c -o ../run/parallella_bf_fmt.elf -I${EINCS} -L${ELIBS} -le-hal
 
 ../run/john: $(JOHN_OBJS)
 	$(LD) $(JOHN_OBJS) $(LDFLAGS) -o ../run/john

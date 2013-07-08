@@ -76,6 +76,11 @@ extern int unshadow(int argc, char **argv);
 extern int unafs(int argc, char **argv);
 extern int unique(int argc, char **argv);
 
+#ifdef HAVE_PARALLELLA
+extern struct fmt_main parallella_fmt_BF;
+#endif
+
+
 int john_main_process = 1;
 #if OS_FORK
 int john_child_count = 0;
@@ -108,6 +113,10 @@ static void john_register_all(void)
 	john_register_one(&fmt_dummy);
 #ifdef HAVE_CRYPT
 	john_register_one(&fmt_crypt);
+#endif
+
+#ifdef HAVE_PARALLELLA
+	john_register_one(&parallella_fmt_BF);
 #endif
 
 	if (!fmt_list) {
