@@ -289,6 +289,8 @@ static int crypt_all(int *pcount, struct db_salt *salt)
 	ERR(e_alloc(&emem, _BufOffset, _BufSize), "Epiphany memory allocation failed!\n");
 
 	ERR(e_open(&dev, 0, 0, platform.rows, platform.cols), "e_open() failed!\n");
+	
+	ERR(e_load_group("parallella_e_bcrypt.srec", &dev, 0, 0, platform.rows, platform.cols, e_false), "Load failed!\n");
 
 	//key
 	for(i = 0; i < platform.rows; i++)
@@ -299,8 +301,11 @@ static int crypt_all(int *pcount, struct db_salt *salt)
 	for(i = 0; i < platform.rows; i++)
 		for(j = 0; j < platform.cols; j++)
 			ERR(e_write(&dev, i, j, 0x7700, saved_salt, SALT_SIZE + 1), "Transfering salt to Epiphany failed!\n");
-	
-	ERR(e_load_group("parallella_e_bcrypt.srec", &dev, 0, 0, platform.rows, platform.cols, e_true), "Load failed!\n");
+
+	for(i = 0; i < platform.rows; i++)
+		for(j = 0; j < platform.cols; j++)
+			e_start(&dev, i, j);
+
 
 	// Wait for core program execution to finish
 	//while(result.done != 16)
@@ -309,9 +314,9 @@ static int crypt_all(int *pcount, struct db_salt *salt)
 	
 	memcpy(parallella_BF_out, result.parallella_BF_out, sizeof(BF_binary)*16);
 	
-	e_close(&dev);
-	e_free(&emem);
-	e_finalize();
+	ERR(e_close(&dev), "Closing Epiphany chip failed!\n");
+	ERR(e_free(&emem), "Freeing memory failed!\n");
+	ERR(e_finalize(), "e_finalize failed!\n");
 
 	return count;
 }
