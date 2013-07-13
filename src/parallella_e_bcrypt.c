@@ -617,8 +617,7 @@ static void BF_set_key(const char *key, BF_key expanded, BF_key initial,
 	initial[0] ^= sign;
 }
 
-static void *BF_crypt(const char *key, const char *setting,
-	char *output, BF_word min)
+static void *BF_crypt(const char *key, const char *setting, BF_word min)
 {
 	static const unsigned char flags_by_subtype[26] =
 		{2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -727,33 +726,24 @@ static void *BF_crypt(const char *key, const char *setting,
 
 int main(void)
 {	
-	const char *hash = (const char *)(0x7700);
+	const char *setting = (const char *)(0x7700);
 	const char *key = (const char *)(0x7800);
-	const char *setting = NULL;
 	const char *out;
 	int coreID, row, col, corenum;
 	
 	coreID  = e_get_coreid();
-	e_coords_from_coreid(coreID, &row, &col);
-	row = row - E_FIRST_CORE_ROW;
-	col = col - E_FIRST_CORE_COL;
-	corenum = row * E_COLS_IN_CHIP + col;
-	
-	char s_buf[30], o_buf[61];
-	if (!setting) {
-		memcpy(s_buf, hash, sizeof(s_buf) - 1);
-		s_buf[sizeof(s_buf) - 1] = 0;
-		setting = s_buf;
-	}
+	row     = e_group_config.core_row;
+	col     = e_group_config.core_col;
+	corenum = row * e_group_config.group_cols + col;
 	
 	if(corenum == 0)
 		outbuf.done = 0;
 	
-	BF_crypt(key, setting, o_buf, 16);
+	BF_crypt(key, setting, 16);
 	
 	memcpy(outbuf.out[corenum], BF_out, sizeof(BF_binary));
 	
 	outbuf.done++;
 
-	return EXIT_SUCCESS;
+	return 0;
 }

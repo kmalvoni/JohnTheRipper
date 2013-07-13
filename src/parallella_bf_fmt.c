@@ -136,6 +136,12 @@ static void init(struct fmt_main *self)
 {
 	keys_mode = 'y';
 	sign_extension_bug = 0;
+	saved_salt = (char *)malloc(SALT_SIZE + 1);
+}
+
+static void done(void)
+{
+	free(saved_salt);
 }
 
 static int valid(char *ciphertext, struct fmt_main *self)
@@ -248,7 +254,6 @@ static int get_hash_6(int index)
 
 static void set_salt(void *salt)
 {
-	saved_salt = (char *)malloc(SALT_SIZE + 1);
 	strnzcpy(saved_salt, (char *)salt, SALT_SIZE + 1);
 }
 
@@ -290,7 +295,7 @@ static int crypt_all(int *pcount, struct db_salt *salt)
 
 	ERR(e_open(&dev, 0, 0, platform.rows, platform.cols), "e_open() failed!\n");
 	
-	ERR(e_load_group("parallella_e_bcrypt.srec", &dev, 0, 0, platform.rows, platform.cols, e_false), "Load failed!\n");
+	ERR(e_load_group("parallella_e_bcrypt.srec", &dev, 0, 0, platform.rows, platform.cols, E_FALSE), "Load failed!\n");
 
 	//key
 	for(i = 0; i < platform.rows; i++)
@@ -404,7 +409,7 @@ struct fmt_main parallella_fmt_BF = {
 		tests
 	}, {
 		init,
-		fmt_default_done,
+		done,
 		fmt_default_reset,
 		fmt_default_prepare,
 		valid,
