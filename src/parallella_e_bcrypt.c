@@ -728,7 +728,9 @@ int main(void)
 {	
 	const char *setting = (const char *)(0x7700);
 	const char *key = (const char *)(0x7800);
-	const char *out;
+	int *done = (int *)(0x7910);
+	int *cnt = (int *)(0x7920);
+	volatile int *start = (int *)(0x7900);
 	int coreID, row, col, corenum;
 	
 	coreID  = e_get_coreid();
@@ -736,14 +738,15 @@ int main(void)
 	col     = e_group_config.core_col;
 	corenum = row * e_group_config.group_cols + col;
 	
-	if(corenum == 0)
-		outbuf.done = 0;
+	while(*start != 16);
+	*done = 0;
+	*start = 0;
 	
 	BF_crypt(key, setting, 16);
 	
 	memcpy(outbuf.out[corenum], BF_out, sizeof(BF_binary));
 	
-	outbuf.done++;
+	*done = corenum + 1;
 
 	return 0;
 }
