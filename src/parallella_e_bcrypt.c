@@ -57,7 +57,7 @@
 #include "e_lib.h"
 
 #define PLAINTEXT_LENGTH		72
-#define SALT_SIZE			22+7
+#define SALT_SIZE				22+7
 
 typedef uint32_t BF_word;
 typedef int32_t BF_word_signed;

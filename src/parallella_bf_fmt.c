@@ -29,17 +29,17 @@
 #define PLAINTEXT_LENGTH		72
 #define CIPHERTEXT_LENGTH		60
 
-#define BINARY_SIZE			4
+#define BINARY_SIZE				4
 #define BINARY_ALIGN			4
-#define SALT_SIZE			22+7
-#define SALT_ALIGN			4
+#define SALT_SIZE				22+7
+#define SALT_ALIGN				4
 
-#define BF_Nmin				16
-#define BF_N				16
+#define BF_Nmin					16
+#define BF_N					16
 #define MIN_KEYS_PER_CRYPT		BF_N
 #define MAX_KEYS_PER_CRYPT		BF_N
 
-#define BF_ROUNDS			16
+#define BF_ROUNDS				16
 
 #define ERR(x,s) \
 if((x) == E_ERR) {\
