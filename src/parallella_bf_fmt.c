@@ -54,8 +54,6 @@ typedef ARCH_WORD_32 BF_word;
  */
 typedef BF_word BF_binary[6];
 
-static BF_binary parallella_BF_out[16];
-
 typedef struct
 {
 	BF_binary result[16];
@@ -64,6 +62,8 @@ typedef struct
 	char setting[16][SALT_SIZE];
 	char key[16][PLAINTEXT_LENGTH + 1];
 }data;
+
+static BF_binary parallella_BF_out[16];
 
 #define _BufSize (sizeof(data))
 #define _BufOffset (0x01000000)
