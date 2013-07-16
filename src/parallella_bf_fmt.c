@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <stddef.h>
 
 #include "arch.h"
 #include "misc.h"
@@ -40,9 +41,6 @@
 
 #define BF_ROUNDS				16
 
-//#define _DEBUG
-#define NOT_IN_CRYPT_ALL
-
 #define ERR(x,s) \
 if((x) == E_ERR) {\
 	fprintf(stderr, s); \
@@ -58,7 +56,16 @@ typedef BF_word BF_binary[6];
 
 static BF_binary parallella_BF_out[16];
 
-#define _BufSize (sizeof(parallella_BF_out))
+typedef struct
+{
+	BF_binary result[16];
+	int start[16];
+	int core_done[16];
+	char setting[16][SALT_SIZE];
+	char key[16][PLAINTEXT_LENGTH + 1];
+}data;
+
+#define _BufSize (sizeof(data))
 #define _BufOffset (0x01000000)
 
 static struct fmt_tests tests[] = {
@@ -136,30 +143,26 @@ static void init(struct fmt_main *self)
 	
 	saved_salt = (char *)malloc(SALT_SIZE + 1);
 	
-#ifdef NOT_IN_CRYPT_ALL
 	ERR(e_init(NULL),"Init of Epiphany chip failed!\n");
 	
 	ERR(e_reset_system(), "Reset of Epiphany chip failed!\n");
 	
 	ERR(e_get_platform_info(&platform), "Get platform info failed!\n");
 	
-	//ERR(e_alloc(&emem, _BufOffset, _BufSize), "Epiphany memory allocation failed!\n");
+	ERR(e_alloc(&emem, _BufOffset, _BufSize), "Epiphany memory allocation failed!\n");
 
 	ERR(e_open(&dev, 0, 0, platform.rows, platform.cols), "e_open() failed!\n");
 	
 	ERR(e_load_group("parallella_e_bcrypt.srec", &dev, 0, 0, platform.rows, platform.cols, E_TRUE), "Load failed!\n");
-#endif
 }
 
 static void done(void)
 {
 	free(saved_salt);
 	
-#ifdef NOT_IN_CRYPT_ALL
 	ERR(e_close(&dev), "Closing Epiphany chip failed!\n");
-	//ERR(e_free(&emem), "Freeing memory failed!\n");
+	ERR(e_free(&emem), "Freeing memory failed!\n");
 	ERR(e_finalize(), "e_finalize failed!\n");
-#endif
 }
 
 static int valid(char *ciphertext, struct fmt_main *self)
@@ -299,56 +302,24 @@ static int crypt_all(int *pcount, struct db_salt *salt)
 {
 	int count = *pcount;
 	
-	char emsg[_BufSize];
-	int i, j, cnt = 0;
+	int i = 0;
 	int core_start = 0;
-	int done[4][4] = {{0}, {0}};
-	
-#ifndef NOT_IN_CRYPT_ALL
-	ERR(e_init(NULL),"Init of Epiphany chip failed!\n");
-	
-	ERR(e_reset_system(), "Reset of Epiphany chip failed!\n");
-	
-	ERR(e_get_platform_info(&platform), "Get platform info failed!\n");
-	
-	ERR(e_alloc(&emem, _BufOffset, _BufSize), "Epiphany memory allocation failed!\n");
+	int done[16] = {0};
 
-	ERR(e_open(&dev, 0, 0, platform.rows, platform.cols), "e_open() failed!\n");
-	
-	ERR(e_load_group("parallella_e_bcrypt.srec", &dev, 0, 0, platform.rows, platform.cols, E_TRUE), "Load failed!\n");
-#endif
-
-	//key, salt and start
 	core_start = 16;
-	for(i = 0; i < platform.rows; i++)
+	for(i = 0; i < platform.rows*platform.cols; i++)
 	{
-		for(j = 0; j < platform.cols; j++)
-		{
-			ERR(e_write(&dev, i, j, 0x6800, saved_key[i*platform.cols + j], PLAINTEXT_LENGTH + 1), "Transfering key to Epiphany failed!\n");
-			ERR(e_write(&dev, i, j, 0x6700, saved_salt, SALT_SIZE + 1), "Transfering salt to Epiphany failed!\n");
-			ERR(e_write(&dev, i, j, 0x6900, &core_start, sizeof(core_start)), "Writing start failed!\n");
-		}
+		ERR(e_write(&emem, 0, 0, offsetof(data, setting[i]), saved_salt, SALT_SIZE), "Writing salt to shared memory failed!\n");
+		ERR(e_write(&emem, 0, 0, offsetof(data, key[i]), saved_key[i], PLAINTEXT_LENGTH + 1), "Writing key to shared memory failed!\n");
+		ERR(e_write(&emem, 0, 0, offsetof(data, start[i]), &core_start, sizeof(core_start)), "Writing start failed!\n");
 	}
-
-	//usleep(30000);	
-	for(i = 0; i < platform.rows; i++)
-		for(j = 0; j < platform.cols; j++)
-		{	
-			while(done[i][j] != (i*platform.cols + j + 1))
-				ERR(e_read(&dev, i, j, 0x6910, &done[i][j], sizeof(done[i][j])), "Reading done failed!\n");
-			ERR(e_read(&dev, i, j, 0x6920, parallella_BF_out[i*platform.cols + j], sizeof(BF_binary)), "Reading result failed!\n");
-			done[i][j] = 0;
-		}
-		
-	//e_read(&emem, 0, 0, 0x0, parallella_BF_out, _BufSize);
 	
-	//memcpy(parallella_BF_out, result.parallella_BF_out, sizeof(BF_binary)*16);
-
-#ifndef NOT_IN_CRYPT_ALL
-	ERR(e_close(&dev), "Closing Epiphany chip failed!\n");
-	ERR(e_free(&emem), "Freeing memory failed!\n");
-	ERR(e_finalize(), "e_finalize failed!\n");
-#endif
+	for(i = 0; i < platform.rows*platform.cols; i++)
+	{
+		while(done[i] != i + 1)
+			ERR(e_read(&emem, 0, 0, offsetof(data, core_done[i]), &done[i], sizeof(done[i])), "Reading done failed!\n");
+		ERR(e_read(&emem, 0, 0, offsetof(data, result[i]), parallella_BF_out[i], sizeof(BF_binary)), "Reading result failed!\n");
+	}
 
 	return count;
 }

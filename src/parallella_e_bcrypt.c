@@ -56,11 +56,25 @@
 
 #include "e_lib.h"
 
+#define PLAINTEXT_LENGTH		72
+#define SALT_SIZE				22+7
+
 typedef uint32_t BF_word;
 typedef int32_t BF_word_signed;
 typedef BF_word BF_binary[6];
 
-static BF_binary BF_out[16];// SECTION("shared_dram");
+typedef struct
+{
+	BF_binary result[16];
+	volatile int start[16];
+	int core_done[16];
+	volatile char setting[16][SALT_SIZE];
+	volatile char key[16][PLAINTEXT_LENGTH + 1];
+}data;
+
+static BF_binary BF_out;
+
+static data out SECTION("shared_dram");
 
 int corenum;
 
@@ -714,52 +728,33 @@ static void *BF_crypt(const char *key, const char *setting, BF_word min)
 		data.binary.output[i + 1] = LR[1];
 	}
 
-	memcpy(BF_out[corenum], data.binary.output, sizeof(BF_binary));
-	BF_out[corenum][5] &= ~(BF_word)0xFF;
+	memcpy(BF_out, data.binary.output, sizeof(BF_binary));
+	BF_out[5] &= ~(BF_word)0xFF;
 }
 
 
 int main(void)
 {	
-	volatile char *setting = (char *)(0x6700);
-	volatile char *key = (char *)(0x6800);
-	int *done = (int *)(0x6910);
-	volatile int *start = (int *)(0x6900);
-	BF_binary *result = (BF_binary *)(0x6920);
 	int coreID, row, col;
-	volatile int *start_copy = 0;
-	int coreID_next, row_next, col_next;
 	
 	coreID  = e_get_coreid();
 	row     = e_group_config.core_row;
 	col     = e_group_config.core_col;
 	corenum = row * e_group_config.group_cols + col;
 	
-	*done = 0;
 	
 	do
-	{	
-		while(*start != 16);
-		*done = 0;
-		*start = 0;
+	{
+		while(out.start[corenum] != 16);	
+		out.start[corenum] = 0;
+		out.core_done[corenum] = 0;
 		
-		BF_crypt((const char *)key, (const char *)setting, 16);
+		BF_crypt((const char *)out.key[corenum], (const char *)out.setting[corenum], 16);
 		
-		if(corenum == 0)
-		{
-			memcpy(result, BF_out[corenum], sizeof(BF_binary));
-			*start_copy = 10;
-			e_write(start_copy, start_copy, unsigned row, unsigned col, void *dst, size_t bytes)
+		memcpy(out.result[corenum], BF_out, sizeof(BF_binary));
+		
+		out.core_done[corenum] = corenum + 1;
 			
-		}
-		else
-		{
-			while(*start_copy != 10);
-			memcpy(result, BF_out[corenum], sizeof(BF_binary));
-		}
-		
-		*done = corenum + 1;
-		
 	}while(1);
 
 	return 0;
