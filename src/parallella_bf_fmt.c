@@ -40,8 +40,8 @@
 
 #define BF_ROUNDS				16
 
-#define _DEBUG
-//#define NOT_IN_CRYPT_ALL
+//#define _DEBUG
+#define NOT_IN_CRYPT_ALL
 
 #define ERR(x,s) \
 if((x) == E_ERR) {\
@@ -56,16 +56,10 @@ typedef ARCH_WORD_32 BF_word;
  */
 typedef BF_word BF_binary[6];
 
-typedef struct
-{
-	BF_binary parallella_BF_out[16];
-	int done;
-} data;
-
-#define _BufSize (sizeof(data))
-#define _BufOffset (0x01000000)
-
 static BF_binary parallella_BF_out[16];
+
+#define _BufSize (sizeof(parallella_BF_out))
+#define _BufOffset (0x01000000)
 
 static struct fmt_tests tests[] = {
 	{"$2a$05$CCCCCCCCCCCCCCCCCCCCC.E5YPO9kmyuRGyh0XouQYb4YMJKvyOeW",
@@ -142,18 +136,18 @@ static void init(struct fmt_main *self)
 	
 	saved_salt = (char *)malloc(SALT_SIZE + 1);
 	
-#ifndef NOT_IN_CRYPT_ALL
+#ifdef NOT_IN_CRYPT_ALL
 	ERR(e_init(NULL),"Init of Epiphany chip failed!\n");
 	
 	ERR(e_reset_system(), "Reset of Epiphany chip failed!\n");
 	
 	ERR(e_get_platform_info(&platform), "Get platform info failed!\n");
 	
-	ERR(e_alloc(&emem, _BufOffset, _BufSize), "Epiphany memory allocation failed!\n");
+	//ERR(e_alloc(&emem, _BufOffset, _BufSize), "Epiphany memory allocation failed!\n");
 
 	ERR(e_open(&dev, 0, 0, platform.rows, platform.cols), "e_open() failed!\n");
 	
-	ERR(e_load_group("parallella_e_bcrypt.srec", &dev, 0, 0, platform.rows, platform.cols, E_FALSE), "Load failed!\n");
+	ERR(e_load_group("parallella_e_bcrypt.srec", &dev, 0, 0, platform.rows, platform.cols, E_TRUE), "Load failed!\n");
 #endif
 }
 
@@ -163,7 +157,7 @@ static void done(void)
 	
 #ifdef NOT_IN_CRYPT_ALL
 	ERR(e_close(&dev), "Closing Epiphany chip failed!\n");
-	ERR(e_free(&emem), "Freeing memory failed!\n");
+	//ERR(e_free(&emem), "Freeing memory failed!\n");
 	ERR(e_finalize(), "e_finalize failed!\n");
 #endif
 }
@@ -306,9 +300,8 @@ static int crypt_all(int *pcount, struct db_salt *salt)
 	int count = *pcount;
 	
 	char emsg[_BufSize];
-	int i, j = 0;
+	int i, j, cnt = 0;
 	int core_start = 0;
-	data result;
 	int done[4][4] = {{0}, {0}};
 	
 #ifndef NOT_IN_CRYPT_ALL
@@ -322,7 +315,7 @@ static int crypt_all(int *pcount, struct db_salt *salt)
 
 	ERR(e_open(&dev, 0, 0, platform.rows, platform.cols), "e_open() failed!\n");
 	
-	ERR(e_load_group("parallella_e_bcrypt.srec", &dev, 0, 0, platform.rows, platform.cols, E_FALSE), "Load failed!\n");
+	ERR(e_load_group("parallella_e_bcrypt.srec", &dev, 0, 0, platform.rows, platform.cols, E_TRUE), "Load failed!\n");
 #endif
 
 	//key, salt and start
@@ -331,28 +324,25 @@ static int crypt_all(int *pcount, struct db_salt *salt)
 	{
 		for(j = 0; j < platform.cols; j++)
 		{
-			ERR(e_write(&dev, i, j, 0x7800, saved_key[i*platform.rows + j], PLAINTEXT_LENGTH + 1), "Transfering key to Epiphany failed!\n");
-			ERR(e_write(&dev, i, j, 0x7700, saved_salt, SALT_SIZE + 1), "Transfering salt to Epiphany failed!\n");
-			ERR(e_write(&dev, i, j, 0x7900, &core_start, sizeof(core_start)), "Writing start failed!\n");
+			ERR(e_write(&dev, i, j, 0x6800, saved_key[i*platform.cols + j], PLAINTEXT_LENGTH + 1), "Transfering key to Epiphany failed!\n");
+			ERR(e_write(&dev, i, j, 0x6700, saved_salt, SALT_SIZE + 1), "Transfering salt to Epiphany failed!\n");
+			ERR(e_write(&dev, i, j, 0x6900, &core_start, sizeof(core_start)), "Writing start failed!\n");
 		}
 	}
 
-	for(i = 0; i < platform.rows; i++)
-		for(j = 0; j < platform.cols; j++)
-			e_start(&dev, i, j);
-
-
-	//usleep(50000);	
+	//usleep(30000);	
 	for(i = 0; i < platform.rows; i++)
 		for(j = 0; j < platform.cols; j++)
 		{	
 			while(done[i][j] != (i*platform.cols + j + 1))
-				e_read(&dev, i, j, 0x7910, &done[i][j], sizeof(done[i][j]));
+				ERR(e_read(&dev, i, j, 0x6910, &done[i][j], sizeof(done[i][j])), "Reading done failed!\n");
+			ERR(e_read(&dev, i, j, 0x6920, parallella_BF_out[i*platform.cols + j], sizeof(BF_binary)), "Reading result failed!\n");
+			done[i][j] = 0;
 		}
 		
-	e_read(&emem, 0, 0, 0x0, &result, _BufSize);
+	//e_read(&emem, 0, 0, 0x0, parallella_BF_out, _BufSize);
 	
-	memcpy(parallella_BF_out, result.parallella_BF_out, sizeof(BF_binary)*16);
+	//memcpy(parallella_BF_out, result.parallella_BF_out, sizeof(BF_binary)*16);
 
 #ifndef NOT_IN_CRYPT_ALL
 	ERR(e_close(&dev), "Closing Epiphany chip failed!\n");

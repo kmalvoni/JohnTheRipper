@@ -60,12 +60,9 @@ typedef uint32_t BF_word;
 typedef int32_t BF_word_signed;
 typedef BF_word BF_binary[6];
 
-typedef struct
-{
-	BF_binary out[16];
-	int done;
-} data;
-data outbuf SECTION("shared_dram");
+static BF_binary BF_out[16];// SECTION("shared_dram");
+
+int corenum;
 
 /* Number of Blowfish rounds, this is also hardcoded into a few places */
 #define BF_ROUNDS				16
@@ -79,8 +76,6 @@ typedef union {
 	} s;
 	BF_word PS[BF_ROUNDS + 2 + 4 * 0x100];
 } BF_ctx;
-
-static BF_binary BF_out;
 
 /*
  * Magic IV for 64 Blowfish encryptions that we do at the end.
@@ -719,34 +714,53 @@ static void *BF_crypt(const char *key, const char *setting, BF_word min)
 		data.binary.output[i + 1] = LR[1];
 	}
 
-	memcpy(BF_out, data.binary.output, sizeof(BF_out));
-	BF_out[5] &= ~(BF_word)0xFF;
+	memcpy(BF_out[corenum], data.binary.output, sizeof(BF_binary));
+	BF_out[corenum][5] &= ~(BF_word)0xFF;
 }
 
 
 int main(void)
 {	
-	const char *setting = (const char *)(0x7700);
-	const char *key = (const char *)(0x7800);
-	int *done = (int *)(0x7910);
-	int *cnt = (int *)(0x7920);
-	volatile int *start = (int *)(0x7900);
-	int coreID, row, col, corenum;
+	volatile char *setting = (char *)(0x6700);
+	volatile char *key = (char *)(0x6800);
+	int *done = (int *)(0x6910);
+	volatile int *start = (int *)(0x6900);
+	BF_binary *result = (BF_binary *)(0x6920);
+	int coreID, row, col;
+	volatile int *start_copy = 0;
+	int coreID_next, row_next, col_next;
 	
 	coreID  = e_get_coreid();
 	row     = e_group_config.core_row;
 	col     = e_group_config.core_col;
 	corenum = row * e_group_config.group_cols + col;
 	
-	while(*start != 16);
 	*done = 0;
-	*start = 0;
 	
-	BF_crypt(key, setting, 16);
-	
-	memcpy(outbuf.out[corenum], BF_out, sizeof(BF_binary));
-	
-	*done = corenum + 1;
+	do
+	{	
+		while(*start != 16);
+		*done = 0;
+		*start = 0;
+		
+		BF_crypt((const char *)key, (const char *)setting, 16);
+		
+		if(corenum == 0)
+		{
+			memcpy(result, BF_out[corenum], sizeof(BF_binary));
+			*start_copy = 10;
+			e_write(start_copy, start_copy, unsigned row, unsigned col, void *dst, size_t bytes)
+			
+		}
+		else
+		{
+			while(*start_copy != 10);
+			memcpy(result, BF_out[corenum], sizeof(BF_binary));
+		}
+		
+		*done = corenum + 1;
+		
+	}while(1);
 
 	return 0;
 }
