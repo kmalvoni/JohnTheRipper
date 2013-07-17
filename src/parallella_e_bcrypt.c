@@ -58,18 +58,30 @@
 
 #define PLAINTEXT_LENGTH		72
 #define SALT_SIZE			22+7
+#define EPIPHANY_CORES			16
+
+/* Number of Blowfish rounds, this is also hardcoded into a few places */
+#define BF_ROUNDS			16
 
 typedef uint32_t BF_word;
 typedef int32_t BF_word_signed;
 typedef BF_word BF_binary[6];
+typedef BF_word BF_key[BF_ROUNDS + 2];
+
+typedef struct {
+	BF_word salt[4];
+	unsigned char rounds;
+	char subtype;
+} BF_salt;
 
 typedef struct
 {
-	BF_binary result[16];
-	volatile int start[16];
-	int core_done[16];
-	volatile char setting[16][SALT_SIZE];
-	volatile char key[16][PLAINTEXT_LENGTH + 1];
+	BF_binary result[EPIPHANY_CORES];
+	volatile int start[EPIPHANY_CORES];
+	int core_done[EPIPHANY_CORES];
+	BF_key init_key[EPIPHANY_CORES];
+	BF_key exp_key[EPIPHANY_CORES];
+	BF_salt setting[EPIPHANY_CORES];
 }data;
 
 static BF_binary BF_out;
@@ -77,11 +89,6 @@ static BF_binary BF_out;
 static data out SECTION("shared_dram");
 
 int corenum;
-
-/* Number of Blowfish rounds, this is also hardcoded into a few places */
-#define BF_ROUNDS				16
-
-typedef BF_word BF_key[BF_ROUNDS + 2];
 
 typedef union {
 	struct {
@@ -387,81 +394,6 @@ static const unsigned char BF_atoi64[0x60] = {
 	43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 64, 64, 64, 64, 64
 };
 
-#define BF_safe_atoi64(dst, src) \
-{ \
-	tmp = (unsigned char)(src); \
-	if ((unsigned int)(tmp -= 0x20) >= 0x60) return -1; \
-	tmp = BF_atoi64[tmp]; \
-	if (tmp > 63) return -1; \
-	(dst) = tmp; \
-}
-
-static int BF_decode(BF_word *dst, const char *src, int size)
-{
-	unsigned char *dptr = (unsigned char *)dst;
-	unsigned char *end = dptr + size;
-	const unsigned char *sptr = (const unsigned char *)src;
-	unsigned int tmp, c1, c2, c3, c4;
-
-	do {
-		BF_safe_atoi64(c1, *sptr++);
-		BF_safe_atoi64(c2, *sptr++);
-		*dptr++ = (c1 << 2) | ((c2 & 0x30) >> 4);
-		if (dptr >= end) break;
-
-		BF_safe_atoi64(c3, *sptr++);
-		*dptr++ = ((c2 & 0x0F) << 4) | ((c3 & 0x3C) >> 2);
-		if (dptr >= end) break;
-
-		BF_safe_atoi64(c4, *sptr++);
-		*dptr++ = ((c3 & 0x03) << 6) | c4;
-	} while (dptr < end);
-
-	return 0;
-}
-
-static void BF_encode(char *dst, const BF_word *src, int size)
-{
-	const unsigned char *sptr = (const unsigned char *)src;
-	const unsigned char *end = sptr + size;
-	unsigned char *dptr = (unsigned char *)dst;
-	unsigned int c1, c2;
-
-	do {
-		c1 = *sptr++;
-		*dptr++ = BF_itoa64[c1 >> 2];
-		c1 = (c1 & 0x03) << 4;
-		if (sptr >= end) {
-			*dptr++ = BF_itoa64[c1];
-			break;
-		}
-
-		c2 = *sptr++;
-		c1 |= c2 >> 4;
-		*dptr++ = BF_itoa64[c1];
-		c1 = (c2 & 0x0f) << 2;
-		if (sptr >= end) {
-			*dptr++ = BF_itoa64[c1];
-			break;
-		}
-
-		c2 = *sptr++;
-		c1 |= c2 >> 6;
-		*dptr++ = BF_itoa64[c1];
-		*dptr++ = BF_itoa64[c2 & 0x3f];
-	} while (sptr < end);
-}
-
-static void BF_swap(BF_word *x, int count)
-{
-	if ((union { int i; char c; }){1}.c)
-	do {
-		BF_word tmp = *x;
-		tmp = (tmp << 16) | (tmp >> 16);
-		*x++ = ((tmp & 0x00FF00FF) << 8) | ((tmp >> 8) & 0x00FF00FF);
-	} while (--count);
-}
-
 /* Architectures with no complicated addressing modes supported */
 #define BF_INDEX(S, i) \
 	(*((BF_word *)(((unsigned char *)S) + (i))))
@@ -525,108 +457,7 @@ static BF_word BF_encrypt(BF_ctx *ctx,
 	return L;
 }
 
-static void BF_set_key(const char *key, BF_key expanded, BF_key initial,
-    unsigned char flags)
-{
-	const char *ptr = key;
-	unsigned int bug, i, j;
-	BF_word safety, sign, diff, tmp[2];
-
-/*
- * There was a sign extension bug in older revisions of this function.  While
- * we would have liked to simply fix the bug and move on, we have to provide
- * a backwards compatibility feature (essentially the bug) for some systems and
- * a safety measure for some others.  The latter is needed because for certain
- * multiple inputs to the buggy algorithm there exist easily found inputs to
- * the correct algorithm that produce the same hash.  Thus, we optionally
- * deviate from the correct algorithm just enough to avoid such collisions.
- * While the bug itself affected the majority of passwords containing
- * characters with the 8th bit set (although only a percentage of those in a
- * collision-producing way), the anti-collision safety measure affects
- * only a subset of passwords containing the '\xff' character (not even all of
- * those passwords, just some of them).  This character is not found in valid
- * UTF-8 sequences and is rarely used in popular 8-bit character encodings.
- * Thus, the safety measure is unlikely to cause much annoyance, and is a
- * reasonable tradeoff to use when authenticating against existing hashes that
- * are not reliably known to have been computed with the correct algorithm.
- *
- * We use an approach that tries to minimize side-channel leaks of password
- * information - that is, we mostly use fixed-cost bitwise operations instead
- * of branches or table lookups.  (One conditional branch based on password
- * length remains.  It is not part of the bug aftermath, though, and is
- * difficult and possibly unreasonable to avoid given the use of C strings by
- * the caller, which results in similar timing leaks anyway.)
- *
- * For actual implementation, we set an array index in the variable "bug"
- * (0 means no bug, 1 means sign extension bug emulation) and a flag in the
- * variable "safety" (bit 16 is set when the safety measure is requested).
- * Valid combinations of settings are:
- *
- * Prefix "$2a$": bug = 0, safety = 0x10000
- * Prefix "$2x$": bug = 1, safety = 0
- * Prefix "$2y$": bug = 0, safety = 0
- */
-	bug = flags & 1;
-	safety = ((BF_word)flags & 2) << 15;
-
-	sign = diff = 0;
-
-	for (i = 0; i < BF_ROUNDS + 2; i++) {
-		tmp[0] = tmp[1] = 0;
-		for (j = 0; j < 4; j++) {
-			tmp[0] <<= 8;
-			tmp[0] |= (unsigned char)*ptr; /* correct */
-			tmp[1] <<= 8;
-			tmp[1] |= (signed char)*ptr; /* bug */
-/*
- * Sign extension in the first char has no effect - nothing to overwrite yet,
- * and those extra 24 bits will be fully shifted out of the 32-bit word.  For
- * chars 2, 3, 4 in each four-char block, we set bit 7 of "sign" if sign
- * extension in tmp[1] occurs.  Once this flag is set, it remains set.
- */
-			if (j)
-				sign |= tmp[1] & 0x80;
-			if (!*ptr)
-				ptr = key;
-			else
-				ptr++;
-		}
-		diff |= tmp[0] ^ tmp[1]; /* Non-zero on any differences */
-
-		expanded[i] = tmp[bug];
-		initial[i] = BF_init_state.s.P[i] ^ tmp[bug];
-	}
-
-/*
- * At this point, "diff" is zero iff the correct and buggy algorithms produced
- * exactly the same result.  If so and if "sign" is non-zero, which indicates
- * that there was a non-benign sign extension, this means that we have a
- * collision between the correctly computed hash for this password and a set of
- * passwords that could be supplied to the buggy algorithm.  Our safety measure
- * is meant to protect from such many-buggy to one-correct collisions, by
- * deviating from the correct algorithm in such cases.  Let's check for this.
- */
-	diff |= diff >> 16; /* still zero iff exact match */
-	diff &= 0xffff; /* ditto */
-	diff += 0xffff; /* bit 16 set iff "diff" was non-zero (on non-match) */
-	sign <<= 9; /* move the non-benign sign extension flag to bit 16 */
-	sign &= ~diff & safety; /* action needed? */
-
-/*
- * If we have determined that we need to deviate from the correct algorithm,
- * flip bit 16 in initial expanded key.  (The choice of 16 is arbitrary, but
- * let's stick to it now.  It came out of the approach we used above, and it's
- * not any worse than any other choice we could make.)
- *
- * It is crucial that we don't do the same to the expanded key used in the main
- * Eksblowfish loop.  By doing it to only one of these two, we deviate from a
- * state that could be directly specified by a password to the buggy algorithm
- * (and to the fully correct one as well, but that's a side-effect).
- */
-	initial[0] ^= sign;
-}
-
-static void *BF_crypt(const char *key, const char *setting, BF_word min)
+static void *BF_crypt(void)
 {
 	static const unsigned char flags_by_subtype[26] =
 		{2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -641,15 +472,12 @@ static void *BF_crypt(const char *key, const char *setting, BF_word min)
 	} data;
 	BF_word count;
 	int i;
-
-	count = (BF_word)1 << ((setting[4] - '0') * 10 + (setting[5] - '0'));
-	if (count < min || BF_decode(data.binary.salt, &setting[7], 16)) {
-		return NULL;
-	}
-	BF_swap(data.binary.salt, 4);
-
-	BF_set_key(key, data.expanded_key, data.ctx.s.P,
-	    flags_by_subtype[setting[2] - 'a']);
+	
+	count = (BF_word)1 << out.setting[corenum].rounds;
+	memcpy(data.binary.salt, (BF_word *)out.setting[corenum].salt, sizeof(data.binary.salt));
+	
+	memcpy(data.expanded_key, (BF_key*)out.exp_key[corenum], sizeof(BF_key)); 
+	memcpy(data.ctx.s.P, (BF_key*)out.init_key[corenum], sizeof(BF_key)); 
 
 	memcpy(data.ctx.s.S, BF_init_state.s.S, sizeof(data.ctx.s.S));
 
@@ -728,8 +556,8 @@ static void *BF_crypt(const char *key, const char *setting, BF_word min)
 		data.binary.output[i + 1] = LR[1];
 	}
 
-	memcpy(BF_out, data.binary.output, sizeof(BF_binary));
-	BF_out[5] &= ~(BF_word)0xFF;
+	data.binary.output[5] &= ~(BF_word)0xFF;
+	memcpy(out.result[corenum], data.binary.output, sizeof(BF_binary));
 }
 
 
@@ -749,9 +577,7 @@ int main(void)
 		out.start[corenum] = 0;
 		out.core_done[corenum] = 0;
 		
-		BF_crypt((const char *)out.key[corenum], (const char *)out.setting[corenum], 16);
-		
-		memcpy(out.result[corenum], BF_out, sizeof(BF_binary));
+		BF_crypt();
 		
 		out.core_done[corenum] = corenum + 1;
 			
