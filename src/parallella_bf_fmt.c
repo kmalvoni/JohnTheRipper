@@ -34,10 +34,9 @@
 #define SALT_SIZE			22+7
 #define SALT_ALIGN			4
 
-#define BF_Nmin				16
-#define BF_N				16
-#define MIN_KEYS_PER_CRYPT		BF_N
-#define MAX_KEYS_PER_CRYPT		BF_N
+#define EPIPHANY_CORES			16
+#define MIN_KEYS_PER_CRYPT		EPIPHANY_CORES
+#define MAX_KEYS_PER_CRYPT		EPIPHANY_CORES
 
 #define BF_ROUNDS			16
 
@@ -53,14 +52,23 @@ typedef ARCH_WORD_32 BF_word;
  * Binary ciphertext type.
  */
 typedef BF_word BF_binary[6];
+typedef BF_word BF_key[BF_ROUNDS + 2];
+
+typedef struct {
+	BF_word salt[4];
+	unsigned char rounds;
+	char subtype;
+	int dummy_offset;
+} BF_salt;
 
 typedef struct
 {
-	BF_binary result[16];
-	int start[16];
-	int core_done[16];
-	char setting[16][SALT_SIZE];
-	char key[16][PLAINTEXT_LENGTH + 1];
+	BF_binary result[EPIPHANY_CORES];
+	int start[EPIPHANY_CORES];
+	int core_done[EPIPHANY_CORES];
+	BF_key init_key[EPIPHANY_CORES];
+	BF_key exp_key[EPIPHANY_CORES];
+	BF_salt setting[EPIPHANY_CORES];
 }data;
 
 static BF_binary parallella_BF_out[16];
@@ -116,14 +124,24 @@ static struct fmt_tests tests[] = {
 	{NULL}
 };
 
-static char saved_key[BF_N][PLAINTEXT_LENGTH + 1];
+static char saved_key[MAX_KEYS_PER_CRYPT][PLAINTEXT_LENGTH + 1];
 static char keys_mode;
 static int sign_extension_bug;
-static char *saved_salt;
+static BF_salt saved_salt;
+static BF_key BF_exp_key[MAX_KEYS_PER_CRYPT];
+static BF_key BF_init_key[MAX_KEYS_PER_CRYPT];
 
 static e_platform_t platform;
 static e_epiphany_t dev;
 static e_mem_t emem;
+
+static BF_key P_init = {
+		0x243f6a88, 0x85a308d3, 0x13198a2e, 0x03707344,
+		0xa4093822, 0x299f31d0, 0x082efa98, 0xec4e6c89,
+		0x452821e6, 0x38d01377, 0xbe5466cf, 0x34e90c6c,
+		0xc0ac29b7, 0xc97c50dd, 0x3f84d5b5, 0xb5470917,
+		0x9216d5d9, 0x8979fb1b
+};
 
 unsigned char parallella_BF_atoi64[0x80] = {
 	64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
@@ -141,7 +159,7 @@ static void init(struct fmt_main *self)
 	keys_mode = 'y';
 	sign_extension_bug = 0;
 	
-	saved_salt = (char *)malloc(SALT_SIZE + 1);
+	//saved_salt = (char *)malloc(SALT_SIZE + 1);
 	
 	ERR(e_init(NULL),"Init of Epiphany chip failed!\n");
 	
@@ -158,11 +176,44 @@ static void init(struct fmt_main *self)
 
 static void done(void)
 {
-	free(saved_salt);
+	//free(saved_salt);
 	
 	ERR(e_close(&dev), "Closing Epiphany chip failed!\n");
 	ERR(e_free(&emem), "Freeing memory failed!\n");
 	ERR(e_finalize(), "e_finalize failed!\n");
+}
+
+static void BF_swap(BF_word *x, int count)
+{
+	BF_word tmp;
+
+	do {
+		tmp = *x;
+		tmp = (tmp << 16) | (tmp >> 16);
+		*x++ = ((tmp & 0x00FF00FF) << 8) | ((tmp >> 8) & 0x00FF00FF);
+	} while (--count);
+}
+
+static void BF_decode(BF_word *dst, char *src, int size)
+{
+	unsigned char *dptr = (unsigned char *)dst;
+	unsigned char *end = dptr + size;
+	unsigned char *sptr = (unsigned char *)src;
+	unsigned int c1, c2, c3, c4;
+
+	do {
+		c1 = parallella_BF_atoi64[ARCH_INDEX(*sptr++)];
+		c2 = parallella_BF_atoi64[ARCH_INDEX(*sptr++)];
+		*dptr++ = (c1 << 2) | ((c2 & 0x30) >> 4);
+		if (dptr >= end) break;
+
+		c3 = parallella_BF_atoi64[ARCH_INDEX(*sptr++)];
+		*dptr++ = ((c2 & 0x0F) << 4) | ((c3 & 0x3C) >> 2);
+		if (dptr >= end) break;
+
+		c4 = parallella_BF_atoi64[ARCH_INDEX(*sptr++)];
+		*dptr++ = ((c3 & 0x03) << 6) | c4;
+	} while (dptr < end);
 }
 
 static int valid(char *ciphertext, struct fmt_main *self)
@@ -275,22 +326,51 @@ static int get_hash_6(int index)
 
 static void set_salt(void *salt)
 {
-	strnzcpy(saved_salt, (char *)salt, SALT_SIZE + 1);
+	//strnzcpy(saved_salt, (char *)salt, SALT_SIZE + 1);
+	memcpy(&saved_salt, salt, sizeof(saved_salt));
 }
 
 static void *get_salt(char *ciphertext)
 {
-	static char salt[SALT_SIZE + 1];
+	static BF_salt salt;
 
-	memcpy(salt, ciphertext, SALT_SIZE);
-	salt[SALT_SIZE] = 0;
+	BF_decode(salt.salt, &ciphertext[7], 16);
+	BF_swap(salt.salt, 4);
 
-	return salt;
+	salt.rounds = atoi(&ciphertext[4]);
+	if (ciphertext[2] == 'a')
+		salt.subtype = 'y';
+	else
+		salt.subtype = ciphertext[2];
+
+	return &salt;
 }
 
 static void set_key(char *key, int index)
 {
+	char *ptr = key;
+	int i, j;
+	BF_word tmp;
+
+	for (i = 0; i < BF_ROUNDS + 2; i++) {
+		tmp = 0;
+		for (j = 0; j < 4; j++) {
+			tmp <<= 8;
+			if (sign_extension_bug)
+				tmp |= (int)(signed char)*ptr;
+			else
+				tmp |= (unsigned char)*ptr;
+
+			if (!*ptr) ptr = key; else ptr++;
+		}
+
+		BF_exp_key[index][i] = tmp;
+		BF_init_key[index][i] = P_init[i] ^ tmp;
+	}
+	
 	strnzcpy(saved_key[index], key, PLAINTEXT_LENGTH + 1);
+	
+	//printf("set_key: %s\n", saved_key[index]);
 }
 
 static char *get_key(int index)
@@ -302,15 +382,26 @@ static int crypt_all(int *pcount, struct db_salt *salt)
 {
 	int count = *pcount;
 	
-	int i = 0;
+	int i, j, k = 0;
 	int core_start = 0;
-	int done[16] = {0};
+	int done[EPIPHANY_CORES] = {0};
+	unsigned int time[16] = {0};
+	
+	if (keys_mode != saved_salt.subtype) {
+		int i;
 
+		keys_mode = saved_salt.subtype;
+		sign_extension_bug = (keys_mode == 'x');
+		for (i = 0; i < count; i++)
+			set_key(saved_key[i], i);
+	}
+	
 	core_start = 16;
 	for(i = 0; i < platform.rows*platform.cols; i++)
 	{
-		ERR(e_write(&emem, 0, 0, offsetof(data, setting[i]), saved_salt, SALT_SIZE), "Writing salt to shared memory failed!\n");
-		ERR(e_write(&emem, 0, 0, offsetof(data, key[i]), saved_key[i], PLAINTEXT_LENGTH + 1), "Writing key to shared memory failed!\n");
+		ERR(e_write(&emem, 0, 0, offsetof(data, setting[i]), &saved_salt, sizeof(BF_salt)), "Writing salt to shared memory failed!\n");
+		ERR(e_write(&emem, 0, 0, offsetof(data, init_key[i]), &BF_init_key[i], sizeof(BF_key)), "Writing key to shared memory failed!\n");
+		ERR(e_write(&emem, 0, 0, offsetof(data, exp_key[i]), &BF_exp_key[i], sizeof(BF_key)), "Writing key to shared memory failed!\n");
 		ERR(e_write(&emem, 0, 0, offsetof(data, start[i]), &core_start, sizeof(core_start)), "Writing start failed!\n");
 	}
 	
@@ -320,43 +411,9 @@ static int crypt_all(int *pcount, struct db_salt *salt)
 			ERR(e_read(&emem, 0, 0, offsetof(data, core_done[i]), &done[i], sizeof(done[i])), "Reading done failed!\n");
 		ERR(e_read(&emem, 0, 0, offsetof(data, result[i]), parallella_BF_out[i], sizeof(BF_binary)), "Reading result failed!\n");
 	}
-
+	
 	return count;
 }
-
-static void BF_swap(BF_word *x, int count)
-{
-	BF_word tmp;
-
-	do {
-		tmp = *x;
-		tmp = (tmp << 16) | (tmp >> 16);
-		*x++ = ((tmp & 0x00FF00FF) << 8) | ((tmp >> 8) & 0x00FF00FF);
-	} while (--count);
-}
-
-static void BF_decode(BF_word *dst, char *src, int size)
-{
-	unsigned char *dptr = (unsigned char *)dst;
-	unsigned char *end = dptr + size;
-	unsigned char *sptr = (unsigned char *)src;
-	unsigned int c1, c2, c3, c4;
-
-	do {
-		c1 = parallella_BF_atoi64[ARCH_INDEX(*sptr++)];
-		c2 = parallella_BF_atoi64[ARCH_INDEX(*sptr++)];
-		*dptr++ = (c1 << 2) | ((c2 & 0x30) >> 4);
-		if (dptr >= end) break;
-
-		c3 = parallella_BF_atoi64[ARCH_INDEX(*sptr++)];
-		*dptr++ = ((c2 & 0x0F) << 4) | ((c3 & 0x3C) >> 2);
-		if (dptr >= end) break;
-
-		c4 = parallella_BF_atoi64[ARCH_INDEX(*sptr++)];
-		*dptr++ = ((c3 & 0x03) << 6) | c4;
-	} while (dptr < end);
-}
-
 
 static int cmp_all(void *binary, int count)
 {
