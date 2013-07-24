@@ -51,8 +51,6 @@
  */
 
 #include <string.h>
-#include <stdint.h>
-#include <stdio.h>
 
 #include "e_lib.h"
 
@@ -63,9 +61,11 @@
 /* Number of Blowfish rounds, this is also hardcoded into a few places */
 #define BF_ROUNDS			16
 
-typedef uint32_t BF_word;
-typedef int32_t BF_word_signed;
-typedef BF_word BF_binary[6];
+#define assembly
+
+typedef unsigned int BF_word;
+typedef int BF_word_signed;
+typedef BF_word BF_binary[2];
 typedef BF_word BF_key[BF_ROUNDS + 2];
 
 typedef struct {
@@ -394,6 +394,42 @@ static const unsigned char BF_atoi64[0x60] = {
 	43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 64, 64, 64, 64, 64
 };
 
+#define BF_safe_atoi64(dst, src) \
+{ \
+	tmp = (unsigned char)(src); \
+	if ((unsigned int)(tmp -= 0x20) >= 0x60) return -1; \
+	tmp = BF_atoi64[tmp]; \
+	if (tmp > 63) return -1; \
+	(dst) = tmp; \
+}
+
+#ifdef assembly
+#define BF_ROUND(L, R, N) \
+__asm__ __volatile__ ( \
+	"and r44, %1, r25\n" \
+	"lsr r23, %1, 0xe\n" \
+	"and r23, r23, r21\n" \
+	"lsr r24, %1, 0x16\n" \
+	"and r24, r24, r21\n" \
+	"imadd r44, r44, r46\n" \
+	"ldr r23, [r18, +r23]\n" \
+	"ldr r24, [r26, +r24]\n" \
+	"lsr r22, %1, 6\n" \
+	"and r22, r22, r21\n" \
+	"iadd r23, r24, r23\n" \
+	"ldr r22, [r19, +r22]\n" \
+	"ldr r27, [r45], 0x1\n" \
+	"ldr r44, [r20, +r44]\n" \
+	"eor %0, %0, r27\n" \
+	"eor r23, r22, r23\n" \
+	"add r23, r23, r44\n" \
+	"eor %0, %0, r23\n" \
+	: "+r" (R) \
+	: "r" (L) \
+);
+
+#else
+
 /* Architectures with no complicated addressing modes supported */
 #define BF_INDEX(S, i) \
 	(*((BF_word *)(((unsigned char *)S) + (i))))
@@ -414,6 +450,7 @@ static const unsigned char BF_atoi64[0x60] = {
 	R ^= ctx->s.P[N + 1]; \
 	tmp3 += tmp1; \
 	R ^= tmp3;
+#endif
 
 static BF_word BF_encrypt(BF_ctx *ctx,
     BF_word L, BF_word R,
@@ -421,9 +458,38 @@ static BF_word BF_encrypt(BF_ctx *ctx,
 {
 	BF_word tmp1, tmp2, tmp3, tmp4;
 	BF_word *ptr = start;
+	
+#ifdef assembly
+	__asm__ __volatile__(
+		"mov r20, 0xc48\n" 
+		"mov r19, 0x848\n"
+		"mov r18, 0x448\n"
+		"mov r21, 0x3fc\n"
+		"add r20, %[ctx], r20\n"
+		"add r19, %[ctx], r19\n"
+		"add r18, %[ctx], r18\n"
+		"add r26, %[ctx], 0x48\n"
+		"mov r25, 0xff\n"
+		"mov r46, 3\n"
+		: 
+		: [ctx] "r" (ctx) 
+		: "r18", "r19", "r20", "r21", "r25", "r26", "r46", "r22", "r23", "r24", "r44"
+	);
+#endif
 
 	do {
+#ifdef assembly
+	__asm__ __volatile__(
+		"add r45, %[ctx], 0x4\n"
+		"ldr r27, [%[ctx], +0]\n"
+		"eor %[L], r27, %[L]\n"
+		: [L] "+r" (L)
+		: [ctx] "r" (ctx)
+		: "r45", "r27"
+	);
+#else
 		L ^= ctx->s.P[0];
+#endif
 #if 1
 		BF_ROUND(L, R, 0);
 		BF_ROUND(R, L, 1);
@@ -467,7 +533,7 @@ static void *BF_crypt(void)
 		BF_key expanded_key;
 		union {
 			BF_word salt[4];
-			BF_word output[6];
+			BF_word output[2];
 		} binary;
 	} data;
 	BF_word count;
@@ -506,10 +572,24 @@ static void *BF_crypt(void)
 	do {
 		int done;
 
-		for (i = 0; i < BF_ROUNDS + 2; i += 2) {
-			data.ctx.s.P[i] ^= data.expanded_key[i];
-			data.ctx.s.P[i + 1] ^= data.expanded_key[i + 1];
-		}
+		data.ctx.s.P[0] ^= data.expanded_key[0];
+		data.ctx.s.P[1] ^= data.expanded_key[1];
+		data.ctx.s.P[2] ^= data.expanded_key[2];
+		data.ctx.s.P[3] ^= data.expanded_key[3];
+		data.ctx.s.P[4] ^= data.expanded_key[4];
+		data.ctx.s.P[5] ^= data.expanded_key[5];
+		data.ctx.s.P[6] ^= data.expanded_key[6];
+		data.ctx.s.P[7] ^= data.expanded_key[7];
+		data.ctx.s.P[8] ^= data.expanded_key[8];
+		data.ctx.s.P[9] ^= data.expanded_key[9];
+		data.ctx.s.P[10] ^= data.expanded_key[10];
+		data.ctx.s.P[11] ^= data.expanded_key[11];
+		data.ctx.s.P[12] ^= data.expanded_key[12];
+		data.ctx.s.P[13] ^= data.expanded_key[13];
+		data.ctx.s.P[14] ^= data.expanded_key[14];
+		data.ctx.s.P[15] ^= data.expanded_key[15];
+		data.ctx.s.P[16] ^= data.expanded_key[16];
+		data.ctx.s.P[17] ^= data.expanded_key[17];
 
 		done = 0;
 		do {
@@ -528,36 +608,51 @@ static void *BF_crypt(void)
 				tmp2 = data.binary.salt[1];
 				tmp3 = data.binary.salt[2];
 				tmp4 = data.binary.salt[3];
-				for (i = 0; i < BF_ROUNDS; i += 4) {
-					data.ctx.s.P[i] ^= tmp1;
-					data.ctx.s.P[i + 1] ^= tmp2;
-					data.ctx.s.P[i + 2] ^= tmp3;
-					data.ctx.s.P[i + 3] ^= tmp4;
-				}
+				data.ctx.s.P[0] ^= tmp1;
+				data.ctx.s.P[1] ^= tmp2;
+				data.ctx.s.P[2] ^= tmp3;
+				data.ctx.s.P[3] ^= tmp4;
+				data.ctx.s.P[4] ^= tmp1;
+				data.ctx.s.P[5] ^= tmp2;
+				data.ctx.s.P[6] ^= tmp3;
+				data.ctx.s.P[7] ^= tmp4;
+				data.ctx.s.P[8] ^= tmp1;
+				data.ctx.s.P[9] ^= tmp2;
+				data.ctx.s.P[10] ^= tmp3;
+				data.ctx.s.P[11] ^= tmp4;
+				data.ctx.s.P[12] ^= tmp1;
+				data.ctx.s.P[13] ^= tmp2;
+				data.ctx.s.P[14] ^= tmp3;
+				data.ctx.s.P[15] ^= tmp4;
 				data.ctx.s.P[16] ^= tmp1;
 				data.ctx.s.P[17] ^= tmp2;
 			}
 		} while (1);
 	} while (--count);
 
-	for (i = 0; i < 6; i += 2) {
+	{
 		BF_word L, LR[2];
 
-		L = BF_magic_w[i];
-		LR[1] = BF_magic_w[i + 1];
+		L = BF_magic_w[0];
+		LR[1] = BF_magic_w[1];
 
-		count = 64;
+		count = 16;
 		do {
+			L = BF_encrypt(&data.ctx, L, LR[1],
+			    &LR[0], &LR[0]);
+			L = BF_encrypt(&data.ctx, L, LR[1],
+			    &LR[0], &LR[0]);
+			L = BF_encrypt(&data.ctx, L, LR[1],
+			    &LR[0], &LR[0]);
 			L = BF_encrypt(&data.ctx, L, LR[1],
 			    &LR[0], &LR[0]);
 		} while (--count);
 
-		data.binary.output[i] = L;
-		data.binary.output[i + 1] = LR[1];
+		data.binary.output[0] = L;
+		data.binary.output[1] = LR[1];
 	}
 
-	data.binary.output[5] &= ~(BF_word)0xFF;
-	memcpy(out.result[corenum], data.binary.output, sizeof(BF_binary));
+	memcpy(out.result[corenum], data.binary.output, sizeof(data.binary.output));
 }
 
 
