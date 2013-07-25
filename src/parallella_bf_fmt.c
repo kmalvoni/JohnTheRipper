@@ -10,6 +10,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <stddef.h>
+#include <sys/time.h>
 
 #include "arch.h"
 #include "misc.h"
@@ -29,7 +30,7 @@
 #define PLAINTEXT_LENGTH		72
 #define CIPHERTEXT_LENGTH		60
 
-#define BINARY_SIZE			4
+#define BINARY_SIZE			8
 #define BINARY_ALIGN			4
 #define SALT_SIZE			22+7
 #define SALT_ALIGN			4
@@ -39,6 +40,8 @@
 #define MAX_KEYS_PER_CRYPT		EPIPHANY_CORES
 
 #define BF_ROUNDS			16
+
+//#define _DEBUG
 
 #define ERR(x,s) \
 if((x) == E_ERR) {\
@@ -51,7 +54,7 @@ typedef ARCH_WORD_32 BF_word;
 /*
  * Binary ciphertext type.
  */
-typedef BF_word BF_binary[6];
+typedef BF_word BF_binary[2];
 typedef BF_word BF_key[BF_ROUNDS + 2];
 
 typedef struct {
@@ -286,7 +289,7 @@ static int get_hash_0(int index)
 #ifdef _DEBUG
 	puts("get_hash_0"); 
 	int i = 0;
-	for(i = 0; i < 6; i++)
+	for(i = 0; i < sizeof(BF_binary); i++)
 		printf("%x ", parallella_BF_out[index][i]);
 	printf("\n");
 #endif
@@ -326,7 +329,6 @@ static int get_hash_6(int index)
 
 static void set_salt(void *salt)
 {
-	//strnzcpy(saved_salt, (char *)salt, SALT_SIZE + 1);
 	memcpy(&saved_salt, salt, sizeof(saved_salt));
 }
 
@@ -369,8 +371,6 @@ static void set_key(char *key, int index)
 	}
 	
 	strnzcpy(saved_key[index], key, PLAINTEXT_LENGTH + 1);
-	
-	//printf("set_key: %s\n", saved_key[index]);
 }
 
 static char *get_key(int index)
@@ -385,7 +385,10 @@ static int crypt_all(int *pcount, struct db_salt *salt)
 	int i, j, k = 0;
 	int core_start = 0;
 	int done[EPIPHANY_CORES] = {0};
-	unsigned int time[16] = {0};
+	int t[16] = {0};
+	struct timeval start, end;
+	BF_key test = {0};
+	BF_salt test_salt = {0};
 	
 	if (keys_mode != saved_salt.subtype) {
 		int i;
@@ -405,12 +408,14 @@ static int crypt_all(int *pcount, struct db_salt *salt)
 		ERR(e_write(&emem, 0, 0, offsetof(data, start[i]), &core_start, sizeof(core_start)), "Writing start failed!\n");
 	}
 	
+	gettimeofday(&start, NULL);
 	for(i = 0; i < platform.rows*platform.cols; i++)
 	{
 		while(done[i] != i + 1)
 			ERR(e_read(&emem, 0, 0, offsetof(data, core_done[i]), &done[i], sizeof(done[i])), "Reading done failed!\n");
 		ERR(e_read(&emem, 0, 0, offsetof(data, result[i]), parallella_BF_out[i], sizeof(BF_binary)), "Reading result failed!\n");
 	}
+	gettimeofday(&end, NULL);
 	
 	return count;
 }
@@ -426,7 +431,9 @@ static int cmp_all(void *binary, int count)
 
 static int cmp_one(void *binary, int index)
 {
-	return *(BF_word *)binary == parallella_BF_out[index][0];
+	return
+	    ((BF_word *)binary)[0] == parallella_BF_out[index][0] &&
+	    ((BF_word *)binary)[1] == parallella_BF_out[index][1];
 }
 
 static int cmp_exact(char *source, int index)
@@ -438,10 +445,8 @@ void *parallella_BF_std_get_binary(char *ciphertext)
 {
 	static BF_binary binary;
 
-	binary[5] = 0;
-	BF_decode(binary, &ciphertext[29], 23);
-	BF_swap(binary, 6);
-	binary[5] &= ~(BF_word)0xFF;
+	BF_decode(binary, &ciphertext[29], 8);
+	BF_swap(binary, 2);
 
 	return &binary;
 }
