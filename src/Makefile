@@ -41,7 +41,7 @@ OPT_INLINE = -Os -funroll-loops -finline-functions
 ESDK=${EPIPHANY_HOME}
 ELIBS=${ESDK}/tools/host/lib
 EINCS=${ESDK}/tools/host/include
-ELDF=${ESDK}/bsps/current/fast.ldf
+ELDF=${ESDK}/bsps/current/internal.ldf
 
 JOHN_OBJS = \
 	DES_fmt.o DES_std.o DES_bs.o DES_bs_b.o \
