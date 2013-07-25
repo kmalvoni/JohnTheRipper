@@ -55,11 +55,11 @@
 #include "e_lib.h"
 
 #define PLAINTEXT_LENGTH		72
-#define SALT_SIZE			22+7
+#define SALT_SIZE				22+7
 #define EPIPHANY_CORES			16
 
 /* Number of Blowfish rounds, this is also hardcoded into a few places */
-#define BF_ROUNDS			16
+#define BF_ROUNDS				16
 
 #define assembly
 
@@ -403,32 +403,43 @@ static const unsigned char BF_atoi64[0x60] = {
 	(dst) = tmp; \
 }
 
-#ifdef assembly
-#define BF_ROUND(L, R, N) \
-__asm__ __volatile__ ( \
-	"and r44, %1, r25\n" \
-	"lsr r23, %1, 0xe\n" \
-	"and r23, r23, r21\n" \
-	"lsr r24, %1, 0x16\n" \
-	"and r24, r24, r21\n" \
-	"imadd r44, r44, r46\n" \
-	"ldr r23, [r18, +r23]\n" \
-	"ldr r24, [r26, +r24]\n" \
-	"lsr r22, %1, 6\n" \
-	"and r22, r22, r21\n" \
-	"iadd r23, r24, r23\n" \
-	"ldr r22, [r19, +r22]\n" \
-	"ldr r27, [r45], 0x1\n" \
-	"ldr r44, [r20, +r44]\n" \
-	"eor %0, %0, r27\n" \
-	"eor r23, r22, r23\n" \
-	"add r23, r23, r44\n" \
-	"eor %0, %0, r23\n" \
-	: "+r" (R) \
-	: "r" (L) \
-);
-
-#else
+#define BF_2ROUND(L, R, N) \
+		"and r44, %[L], %[c2]\n" \
+		"lsr r23, %[L], 0xe\n" \
+		"and r23, r23, %[c1]\n" \
+		"lsr r24, %[L], 0x16\n" \
+		"and r24, r24, %[c1]\n" \
+		"imadd r44, r44, %[c]\n" \
+		"ldr r23, [%[s1], +r23]\n" \
+		"ldr r24, [%[s0], +r24]\n" \
+		"lsr r22, %[L], 6\n" \
+		"and r22, r22, %[c1]\n" \
+		"iadd r23, r24, r23\n" \
+		"ldr r22, [%[s2], +r22]\n" \
+		"ldr r27, [r45], 0x1\n" \
+		"ldr r44, [%[s3], +r44]\n" \
+		"eor %[R], %[R], r27\n" \
+		"eor r23, r22, r23\n" \
+		"add r23, r23, r44\n" \
+		"eor %[R], %[R], r23\n" \
+		"and r44, %[R], %[c2]\n" \
+		"lsr r23, %[R], 0xe\n" \
+		"and r23, r23, %[c1]\n" \
+		"lsr r24, %[R], 0x16\n" \
+		"and r24, r24, %[c1]\n" \
+		"imadd r44, r44, %[c]\n" \
+		"ldr r23, [%[s1], +r23]\n" \
+		"ldr r24, [%[s0], +r24]\n" \
+		"lsr r22, %[R], 6\n" \
+		"and r22, r22, %[c1]\n" \
+		"iadd r23, r24, r23\n" \
+		"ldr r22, [%[s2], +r22]\n" \
+		"ldr r27, [r45], 0x1\n" \
+		"ldr r44, [%[s3], +r44]\n" \
+		"eor %[L], %[L], r27\n" \
+		"eor r23, r22, r23\n" \
+		"add r23, r23, r44\n" \
+		"eor %[L], %[L], r23\n"
 
 /* Architectures with no complicated addressing modes supported */
 #define BF_INDEX(S, i) \
@@ -450,7 +461,6 @@ __asm__ __volatile__ ( \
 	R ^= ctx->s.P[N + 1]; \
 	tmp3 += tmp1; \
 	R ^= tmp3;
-#endif
 
 static BF_word BF_encrypt(BF_ctx *ctx,
     BF_word L, BF_word R,
@@ -459,23 +469,14 @@ static BF_word BF_encrypt(BF_ctx *ctx,
 	BF_word tmp1, tmp2, tmp3, tmp4;
 	BF_word *ptr = start;
 	
-#ifdef assembly
-	__asm__ __volatile__(
-		"mov r20, 0xc48\n" 
-		"mov r19, 0x848\n"
-		"mov r18, 0x448\n"
-		"mov r21, 0x3fc\n"
-		"add r20, %[ctx], r20\n"
-		"add r19, %[ctx], r19\n"
-		"add r18, %[ctx], r18\n"
-		"add r26, %[ctx], 0x48\n"
-		"mov r25, 0xff\n"
-		"mov r46, 3\n"
-		: 
-		: [ctx] "r" (ctx) 
-		: "r18", "r19", "r20", "r21", "r25", "r26", "r46", "r22", "r23", "r24", "r44"
-	);
-#endif
+	BF_word *s0 = ctx->s.S[0];
+	BF_word *s1 = ctx->s.S[1];
+	BF_word *s2 = ctx->s.S[2];
+	BF_word *s3 = ctx->s.S[3];
+	
+	const int c = 3;
+	const int const1 = 0x3FC;
+	const int const2 = 0xFF;
 
 	do {
 #ifdef assembly
@@ -483,13 +484,20 @@ static BF_word BF_encrypt(BF_ctx *ctx,
 		"add r45, %[ctx], 0x4\n"
 		"ldr r27, [%[ctx], +0]\n"
 		"eor %[L], r27, %[L]\n"
-		: [L] "+r" (L)
-		: [ctx] "r" (ctx)
-		: "r45", "r27"
+		BF_2ROUND(L, R, 0)
+		BF_2ROUND(L, R, 2)
+		BF_2ROUND(L, R, 4)
+		BF_2ROUND(L, R, 6)
+		BF_2ROUND(L, R, 8)
+		BF_2ROUND(L, R, 10)
+		BF_2ROUND(L, R, 12)
+		BF_2ROUND(L, R, 14)
+		: [R] "+r" (R), [L] "+r" (L)
+		: [ctx] "r" (ctx), [s0] "r" (s0), [s1] "r" (s1), [s2] "r" (s2), [s3] "r" (s3), [c] "r" (c), [c1] "r" (const1), [c2] "r" (const2)
+		: "r22", "r23", "r24", "r27", "r44", "r45"
 	);
 #else
 		L ^= ctx->s.P[0];
-#endif
 #if 1
 		BF_ROUND(L, R, 0);
 		BF_ROUND(R, L, 1);
@@ -507,11 +515,13 @@ static BF_word BF_encrypt(BF_ctx *ctx,
 		BF_ROUND(R, L, 13);
 		BF_ROUND(L, R, 14);
 		BF_ROUND(R, L, 15);
+
 #else
 		for (int i=0; i<16; i+=2) {
 			BF_ROUND(L, R, i);
 			BF_ROUND(R, L, i+1);
 		}
+#endif
 #endif
 		tmp4 = R;
 		R = L;
