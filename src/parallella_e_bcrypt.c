@@ -54,9 +54,16 @@
 
 #include "e_lib.h"
 
+#define interleave
+
 #define PLAINTEXT_LENGTH		72
 #define SALT_SIZE				22+7
 #define EPIPHANY_CORES			16
+#ifdef interleave
+#define MAX_KEYS_PER_CRYPT		EPIPHANY_CORES*2
+#else
+#define MAX_KEYS_PER_CRYPT		EPIPHANY_CORES
+#endif
 
 /* Number of Blowfish rounds, this is also hardcoded into a few places */
 #define BF_ROUNDS				16
@@ -76,11 +83,11 @@ typedef struct {
 
 typedef struct
 {
-	BF_binary result[EPIPHANY_CORES];
+	BF_binary result[MAX_KEYS_PER_CRYPT];
 	volatile int start[EPIPHANY_CORES];
 	int core_done[EPIPHANY_CORES];
-	BF_key init_key[EPIPHANY_CORES];
-	BF_key exp_key[EPIPHANY_CORES];
+	BF_key init_key[MAX_KEYS_PER_CRYPT];
+	BF_key exp_key[MAX_KEYS_PER_CRYPT];
 	BF_salt setting[EPIPHANY_CORES];
 }data;
 
@@ -444,7 +451,7 @@ static const unsigned char BF_atoi64[0x60] = {
 /* Architectures with no complicated addressing modes supported */
 #define BF_INDEX(S, i) \
 	(*((BF_word *)(((unsigned char *)S) + (i))))
-#define BF_ROUND(L, R, N) \
+#define BF_ROUND(L, R, N, tmp1, tmp2, tmp3, tmp4, ctx) \
 	tmp1 = L & 0xFF; \
 	tmp1 <<= 2; \
 	tmp2 = L >> 6; \
@@ -461,6 +468,66 @@ static const unsigned char BF_atoi64[0x60] = {
 	R ^= ctx->s.P[N + 1]; \
 	tmp3 += tmp1; \
 	R ^= tmp3;
+	
+static void BF_encrypt2(BF_ctx *ctx0, BF_word L0, BF_word R0, BF_ctx *ctx1, BF_word L1, BF_word R1)
+{
+	BF_word tmpa1, tmpa2, tmpa3, tmpa4;
+	BF_word tmpb1, tmpb2, tmpb3, tmpb4;
+	BF_word *ptr;
+	
+	ptr = ctx0->s.P;
+	
+	do {
+		L0 ^= ctx0->s.P[0];
+		L1 ^= ctx1->s.P[0];
+		
+		BF_ROUND(L0, R0, 0, tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
+		BF_ROUND(L1, R1, 0, tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
+		BF_ROUND(R0, L0, 1, tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
+		BF_ROUND(R1, L1, 1, tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
+		BF_ROUND(L0, R0, 2, tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
+		BF_ROUND(L1, R1, 2, tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
+		BF_ROUND(R0, L0, 3, tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
+		BF_ROUND(R1, L1, 3, tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
+		BF_ROUND(L0, R0, 4, tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
+		BF_ROUND(L1, R1, 4, tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
+		BF_ROUND(R0, L0, 5, tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
+		BF_ROUND(R1, L1, 5, tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
+		BF_ROUND(L0, R0, 6, tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
+		BF_ROUND(L1, R1, 6, tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
+		BF_ROUND(R0, L0, 7, tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
+		BF_ROUND(R1, L1, 7, tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
+		BF_ROUND(L0, R0, 8, tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
+		BF_ROUND(L1, R1, 8, tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
+		BF_ROUND(R0, L0, 9, tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
+		BF_ROUND(R1, L1, 9, tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
+		BF_ROUND(L0, R0, 10, tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
+		BF_ROUND(L1, R1, 10, tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
+		BF_ROUND(R0, L0, 11, tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
+		BF_ROUND(R1, L1, 11, tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
+		BF_ROUND(L0, R0, 12, tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
+		BF_ROUND(L1, R1, 12, tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
+		BF_ROUND(R0, L0, 13, tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
+		BF_ROUND(R1, L1, 13, tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
+		BF_ROUND(L0, R0, 14, tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
+		BF_ROUND(L1, R1, 14, tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
+		BF_ROUND(R0, L0, 15, tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
+		BF_ROUND(R1, L1, 15, tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
+		
+		tmpa4 = R0;
+		tmpb4 = R1;
+		R0 = L0;
+		R1 = L1;
+		L0 = tmpa4 ^ ctx0->s.P[BF_ROUNDS + 1];
+		L1 = tmpb4 ^ ctx1->s.P[BF_ROUNDS + 1];
+		*ptr = L0; \
+		*(ptr + 1) = R0; \
+		*(ptr + (ctx1->s.P - ctx0->s.P)) = L1; \
+		*(ptr + (ctx1->s.P - ctx0->s.P) + 1) = R1; \
+		ptr += 2; \
+		
+	} while (ptr < &ctx0->PS[BF_ROUNDS + 2 + 4 * 0x100]);
+}
 
 static BF_word BF_encrypt(BF_ctx *ctx,
     BF_word L, BF_word R,
@@ -478,10 +545,9 @@ static BF_word BF_encrypt(BF_ctx *ctx,
 	const int const1 = 0x3FC;
 	const int const2 = 0xFF;
 
-	do {
 #ifdef assembly
 	__asm__ __volatile__(
-		"add r45, %[ctx], 0x4\n"
+		"loop: add r45, %[ctx], 0x4\n"
 		"ldr r27, [%[ctx], +0]\n"
 		"eor %[L], r27, %[L]\n"
 		BF_2ROUND(L, R, 0)
@@ -492,36 +558,45 @@ static BF_word BF_encrypt(BF_ctx *ctx,
 		BF_2ROUND(L, R, 10)
 		BF_2ROUND(L, R, 12)
 		BF_2ROUND(L, R, 14)
+		"ldr r27, [%[ctx], +0x11]\n"
+		"add %[ptr], %[ptr], 8\n"
+		"eor r24, r27, %[R]\n"
+		"str r24, [%[ptr],-0x2]\n"
+		"str %[L], [%[ptr],-0x1]\n"
+		"sub r27, %[end], %[ptr]\n"
+		"mov %[R], %[L]\n"
+		"mov %[L], r24\n"
+		"bgtu loop\n"
 		: [R] "+r" (R), [L] "+r" (L)
-		: [ctx] "r" (ctx), [s0] "r" (s0), [s1] "r" (s1), [s2] "r" (s2), [s3] "r" (s3), [c] "r" (c), [c1] "r" (const1), [c2] "r" (const2)
+		: [ctx] "r" (ctx), [ptr] "r" (ptr), [end] "r" (end), [s0] "r" (s0), [s1] "r" (s1), [s2] "r" (s2), [s3] "r" (s3), [c] "r" (c), [c1] "r" (const1), [c2] "r" (const2)
 		: "r22", "r23", "r24", "r27", "r44", "r45"
 	);
 #else
+	do {
 		L ^= ctx->s.P[0];
 #if 1
-		BF_ROUND(L, R, 0);
-		BF_ROUND(R, L, 1);
-		BF_ROUND(L, R, 2);
-		BF_ROUND(R, L, 3);
-		BF_ROUND(L, R, 4);
-		BF_ROUND(R, L, 5);
-		BF_ROUND(L, R, 6);
-		BF_ROUND(R, L, 7);
-		BF_ROUND(L, R, 8);
-		BF_ROUND(R, L, 9);
-		BF_ROUND(L, R, 10);
-		BF_ROUND(R, L, 11);
-		BF_ROUND(L, R, 12);
-		BF_ROUND(R, L, 13);
-		BF_ROUND(L, R, 14);
-		BF_ROUND(R, L, 15);
+		BF_ROUND(L, R, 0, tmp1, tmp2, tmp3, tmp4, ctx);
+		BF_ROUND(R, L, 1, tmp1, tmp2, tmp3, tmp4, ctx);
+		BF_ROUND(L, R, 2, tmp1, tmp2, tmp3, tmp4, ctx);
+		BF_ROUND(R, L, 3, tmp1, tmp2, tmp3, tmp4, ctx);
+		BF_ROUND(L, R, 4, tmp1, tmp2, tmp3, tmp4, ctx);
+		BF_ROUND(R, L, 5, tmp1, tmp2, tmp3, tmp4, ctx);
+		BF_ROUND(L, R, 6, tmp1, tmp2, tmp3, tmp4, ctx);
+		BF_ROUND(R, L, 7, tmp1, tmp2, tmp3, tmp4, ctx);
+		BF_ROUND(L, R, 8, tmp1, tmp2, tmp3, tmp4, ctx);
+		BF_ROUND(R, L, 9, tmp1, tmp2, tmp3, tmp4, ctx);
+		BF_ROUND(L, R, 10, tmp1, tmp2, tmp3, tmp4, ctx);
+		BF_ROUND(R, L, 11, tmp1, tmp2, tmp3, tmp4, ctx);
+		BF_ROUND(L, R, 12, tmp1, tmp2, tmp3, tmp4, ctx);
+		BF_ROUND(R, L, 13, tmp1, tmp2, tmp3, tmp4, ctx);
+		BF_ROUND(L, R, 14, tmp1, tmp2, tmp3, tmp4, ctx);
+		BF_ROUND(R, L, 15, tmp1, tmp2, tmp3, tmp4, ctx);
 
 #else
 		for (int i=0; i<16; i+=2) {
-			BF_ROUND(L, R, i);
-			BF_ROUND(R, L, i+1);
+			BF_ROUND(L, R, i, tmp1, tmp2, tmp3, tmp4, ctx);
+			BF_ROUND(R, L, i+1, tmp1, tmp2, tmp3, tmp4, ctx);
 		}
-#endif
 #endif
 		tmp4 = R;
 		R = L;
@@ -529,6 +604,7 @@ static BF_word BF_encrypt(BF_ctx *ctx,
 		*ptr++ = L;
 		*ptr++ = R;
 	} while (ptr < end);
+#endif
 
 	return L;
 }
@@ -538,7 +614,7 @@ static void *BF_crypt(void)
 	static const unsigned char flags_by_subtype[26] =
 		{2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 4, 0};
-	struct {
+	typedef struct {
 		BF_ctx ctx;
 		BF_key expanded_key;
 		union {
@@ -546,123 +622,156 @@ static void *BF_crypt(void)
 			BF_word output[2];
 		} binary;
 	} data;
+
+#ifdef interleave
+	data current[2];
+	int n = 2;
+#else
+	data current[1];
+	int n = 1;
+#endif
+	
 	BF_word count;
-	int i;
+	int i = 0;
 	
-	count = (BF_word)1 << out.setting[corenum].rounds;
-	memcpy(data.binary.salt, (BF_word *)out.setting[corenum].salt, sizeof(data.binary.salt));
+#ifdef interleave
+	memcpy(current[0].expanded_key, (BF_key*)out.exp_key[corenum], sizeof(BF_key)); 
+	memcpy(current[0].ctx.s.P, (BF_key*)out.init_key[corenum], sizeof(BF_key)); 
+	memcpy(current[1].expanded_key, (BF_key*)out.exp_key[corenum + EPIPHANY_CORES], sizeof(BF_key)); 
+	memcpy(current[1].ctx.s.P, (BF_key*)out.init_key[corenum + EPIPHANY_CORES], sizeof(BF_key)); 
+#else
+	memcpy(current[0].expanded_key, (BF_key*)out.exp_key[corenum], sizeof(BF_key)); 
+	memcpy(current[0].ctx.s.P, (BF_key*)out.init_key[corenum], sizeof(BF_key)); 
+#endif
 	
-	memcpy(data.expanded_key, (BF_key*)out.exp_key[corenum], sizeof(BF_key)); 
-	memcpy(data.ctx.s.P, (BF_key*)out.init_key[corenum], sizeof(BF_key)); 
-
-	memcpy(data.ctx.s.S, BF_init_state.s.S, sizeof(data.ctx.s.S));
-
+	for(i = 0; i < n; i++)
 	{
+		count = (BF_word)1 << out.setting[corenum].rounds;
+		memcpy(current[i].binary.salt, (BF_word *)out.setting[corenum].salt, sizeof(current[i].binary.salt));
+
+		memcpy(current[i].ctx.s.S, BF_init_state.s.S, sizeof(current[i].ctx.s.S));
+		
 		BF_word L = 0, R = 0;
-		BF_word *ptr = &data.ctx.PS[0];
+		BF_word *ptr = &current[i].ctx.PS[0];
 		do {
-			L = BF_encrypt(&data.ctx,
-			    L ^ data.binary.salt[0], R ^ data.binary.salt[1],
+			L = BF_encrypt(&current[i].ctx,
+			    L ^ current[i].binary.salt[0], R ^ current[i].binary.salt[1],
 			    ptr, ptr);
 			R = *(ptr + 1);
 			ptr += 2;
 
-			if (ptr >= &data.ctx.PS[BF_ROUNDS + 2 + 4 * 0x100])
+			if (ptr >= &current[i].ctx.PS[BF_ROUNDS + 2 + 4 * 0x100])
 				break;
 
-			L = BF_encrypt(&data.ctx,
-			    L ^ data.binary.salt[2], R ^ data.binary.salt[3],
+			L = BF_encrypt(&current[i].ctx,
+			    L ^ current[i].binary.salt[2], R ^ current[i].binary.salt[3],
 			    ptr, ptr);
 			R = *(ptr + 1);
 			ptr += 2;
 		} while (1);
 		
 	}
+	
+	BF_word *ptr;
 
 	do {
 		int done;
+		for(i = 0; i < n; i++)
+		{
+			current[i].ctx.s.P[0] ^= current[i].expanded_key[0];
+			current[i].ctx.s.P[1] ^= current[i].expanded_key[1];
+			current[i].ctx.s.P[2] ^= current[i].expanded_key[2];
+			current[i].ctx.s.P[3] ^= current[i].expanded_key[3];
+			current[i].ctx.s.P[4] ^= current[i].expanded_key[4];
+			current[i].ctx.s.P[5] ^= current[i].expanded_key[5];
+			current[i].ctx.s.P[6] ^= current[i].expanded_key[6];
+			current[i].ctx.s.P[7] ^= current[i].expanded_key[7];
+			current[i].ctx.s.P[8] ^= current[i].expanded_key[8];
+			current[i].ctx.s.P[9] ^= current[i].expanded_key[9];
+			current[i].ctx.s.P[10] ^= current[i].expanded_key[10];
+			current[i].ctx.s.P[11] ^= current[i].expanded_key[11];
+			current[i].ctx.s.P[12] ^= current[i].expanded_key[12];
+			current[i].ctx.s.P[13] ^= current[i].expanded_key[13];
+			current[i].ctx.s.P[14] ^= current[i].expanded_key[14];
+			current[i].ctx.s.P[15] ^= current[i].expanded_key[15];
+			current[i].ctx.s.P[16] ^= current[i].expanded_key[16];
+			current[i].ctx.s.P[17] ^= current[i].expanded_key[17];
+		}
 
-		data.ctx.s.P[0] ^= data.expanded_key[0];
-		data.ctx.s.P[1] ^= data.expanded_key[1];
-		data.ctx.s.P[2] ^= data.expanded_key[2];
-		data.ctx.s.P[3] ^= data.expanded_key[3];
-		data.ctx.s.P[4] ^= data.expanded_key[4];
-		data.ctx.s.P[5] ^= data.expanded_key[5];
-		data.ctx.s.P[6] ^= data.expanded_key[6];
-		data.ctx.s.P[7] ^= data.expanded_key[7];
-		data.ctx.s.P[8] ^= data.expanded_key[8];
-		data.ctx.s.P[9] ^= data.expanded_key[9];
-		data.ctx.s.P[10] ^= data.expanded_key[10];
-		data.ctx.s.P[11] ^= data.expanded_key[11];
-		data.ctx.s.P[12] ^= data.expanded_key[12];
-		data.ctx.s.P[13] ^= data.expanded_key[13];
-		data.ctx.s.P[14] ^= data.expanded_key[14];
-		data.ctx.s.P[15] ^= data.expanded_key[15];
-		data.ctx.s.P[16] ^= data.expanded_key[16];
-		data.ctx.s.P[17] ^= data.expanded_key[17];
-
-		done = 0;
-		do {
-			BF_encrypt(&data.ctx, 0, 0,
-			    &data.ctx.PS[0],
-			    &data.ctx.PS[BF_ROUNDS + 2 + 4 * 0x100]);
-
-			if (done)
-				break;
-			done = 1;
-
+#ifdef interleave
+			BF_encrypt2(&current[0].ctx, 0, 0, &current[1].ctx, 0, 0);
+#else
+			BF_encrypt(&current[0].ctx, 0, 0, &current[0].ctx.PS[0], &current[0].ctx.PS[BF_ROUNDS + 2 + 4 * 0x100]);
+#endif
 			{
 				BF_word tmp1, tmp2, tmp3, tmp4;
-
-				tmp1 = data.binary.salt[0];
-				tmp2 = data.binary.salt[1];
-				tmp3 = data.binary.salt[2];
-				tmp4 = data.binary.salt[3];
-				data.ctx.s.P[0] ^= tmp1;
-				data.ctx.s.P[1] ^= tmp2;
-				data.ctx.s.P[2] ^= tmp3;
-				data.ctx.s.P[3] ^= tmp4;
-				data.ctx.s.P[4] ^= tmp1;
-				data.ctx.s.P[5] ^= tmp2;
-				data.ctx.s.P[6] ^= tmp3;
-				data.ctx.s.P[7] ^= tmp4;
-				data.ctx.s.P[8] ^= tmp1;
-				data.ctx.s.P[9] ^= tmp2;
-				data.ctx.s.P[10] ^= tmp3;
-				data.ctx.s.P[11] ^= tmp4;
-				data.ctx.s.P[12] ^= tmp1;
-				data.ctx.s.P[13] ^= tmp2;
-				data.ctx.s.P[14] ^= tmp3;
-				data.ctx.s.P[15] ^= tmp4;
-				data.ctx.s.P[16] ^= tmp1;
-				data.ctx.s.P[17] ^= tmp2;
+				
+				for(i = 0; i < n; i++)
+				{
+					tmp1 = current[i].binary.salt[0];
+					tmp2 = current[i].binary.salt[1];
+					tmp3 = current[i].binary.salt[2];
+					tmp4 = current[i].binary.salt[3];
+					current[i].ctx.s.P[0] ^= tmp1;
+					current[i].ctx.s.P[1] ^= tmp2;
+					current[i].ctx.s.P[2] ^= tmp3;
+					current[i].ctx.s.P[3] ^= tmp4;
+					current[i].ctx.s.P[4] ^= tmp1;
+					current[i].ctx.s.P[5] ^= tmp2;
+					current[i].ctx.s.P[6] ^= tmp3;
+					current[i].ctx.s.P[7] ^= tmp4;
+					current[i].ctx.s.P[8] ^= tmp1;
+					current[i].ctx.s.P[9] ^= tmp2;
+					current[i].ctx.s.P[10] ^= tmp3;
+					current[i].ctx.s.P[11] ^= tmp4;
+					current[i].ctx.s.P[12] ^= tmp1;
+					current[i].ctx.s.P[13] ^= tmp2;
+					current[i].ctx.s.P[14] ^= tmp3;
+					current[i].ctx.s.P[15] ^= tmp4;
+					current[i].ctx.s.P[16] ^= tmp1;
+					current[i].ctx.s.P[17] ^= tmp2;
+				}
 			}
-		} while (1);
+		
+#ifdef interleave
+			BF_encrypt2(&current[0].ctx, 0, 0, &current[1].ctx, 0, 0);
+#else
+			BF_encrypt(&current[0].ctx, 0, 0, &current[0].ctx.PS[0], &current[0].ctx.PS[BF_ROUNDS + 2 + 4 * 0x100]);
+#endif
+		
 	} while (--count);
 
 	{
 		BF_word L, LR[2];
 
-		L = BF_magic_w[0];
-		LR[1] = BF_magic_w[1];
+		for(i = 0; i < n; i++)
+		{
+			L = BF_magic_w[0];
+			LR[1] = BF_magic_w[1];
 
-		count = 16;
-		do {
-			L = BF_encrypt(&data.ctx, L, LR[1],
-			    &LR[0], &LR[0]);
-			L = BF_encrypt(&data.ctx, L, LR[1],
-			    &LR[0], &LR[0]);
-			L = BF_encrypt(&data.ctx, L, LR[1],
-			    &LR[0], &LR[0]);
-			L = BF_encrypt(&data.ctx, L, LR[1],
-			    &LR[0], &LR[0]);
-		} while (--count);
+			count = 16;
+			do {
+				L = BF_encrypt(&current[i].ctx, L, LR[1],
+					&LR[0], &LR[0]);
+				L = BF_encrypt(&current[i].ctx, L, LR[1],
+					&LR[0], &LR[0]);
+				L = BF_encrypt(&current[i].ctx, L, LR[1],
+					&LR[0], &LR[0]);
+				L = BF_encrypt(&current[i].ctx, L, LR[1],
+					&LR[0], &LR[0]);
+			} while (--count);
 
-		data.binary.output[0] = L;
-		data.binary.output[1] = LR[1];
+			current[i].binary.output[0] = L;
+			current[i].binary.output[1] = LR[1];
+		}
 	}
 
-	memcpy(out.result[corenum], data.binary.output, sizeof(data.binary.output));
+#ifdef interleave
+	memcpy(out.result[corenum + EPIPHANY_CORES], current[1].binary.output, sizeof(current[1].binary.output));
+	memcpy(out.result[corenum], current[0].binary.output, sizeof(current[0].binary.output));
+#else
+	memcpy(out.result[corenum], current[0].binary.output, sizeof(current[0].binary.output));
+#endif
 }
 
 
