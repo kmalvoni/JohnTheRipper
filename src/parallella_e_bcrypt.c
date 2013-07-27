@@ -410,7 +410,7 @@ static const unsigned char BF_atoi64[0x60] = {
 	(dst) = tmp; \
 }
 
-#define BF_2ROUND(L, R, N) \
+#define BF_2ROUND \
 		"and r44, %[L], %[c2]\n" \
 		"lsr r23, %[L], 0xe\n" \
 		"and r23, r23, %[c1]\n" \
@@ -451,7 +451,7 @@ static const unsigned char BF_atoi64[0x60] = {
 /* Architectures with no complicated addressing modes supported */
 #define BF_INDEX(S, i) \
 	(*((BF_word *)(((unsigned char *)S) + (i))))
-#define BF_ROUND(L, R, N, tmp1, tmp2, tmp3, tmp4, ctx) \
+#define BF_ROUND(L, R, PN, tmp1, tmp2, tmp3, tmp4, ctx) \
 	tmp1 = L & 0xFF; \
 	tmp1 <<= 2; \
 	tmp2 = L >> 6; \
@@ -465,7 +465,7 @@ static const unsigned char BF_atoi64[0x60] = {
 	tmp3 = BF_INDEX(ctx->s.S[1], tmp3); \
 	tmp3 += BF_INDEX(ctx->s.S[0], tmp4); \
 	tmp3 ^= tmp2; \
-	R ^= ctx->s.P[N + 1]; \
+	R ^= PN; \
 	tmp3 += tmp1; \
 	R ^= tmp3;
 	
@@ -474,52 +474,148 @@ static void BF_encrypt2(BF_ctx *ctx0, BF_word L0, BF_word R0, BF_ctx *ctx1, BF_w
 	BF_word tmpa1, tmpa2, tmpa3, tmpa4;
 	BF_word tmpb1, tmpb2, tmpb3, tmpb4;
 	BF_word *ptr;
+	int i = 0;
 	
 	ptr = ctx0->s.P;
 	
-	do {
+	do
+	{	
 		L0 ^= ctx0->s.P[0];
 		L1 ^= ctx1->s.P[0];
 		
-		BF_ROUND(L0, R0, 0, tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
-		BF_ROUND(L1, R1, 0, tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
-		BF_ROUND(R0, L0, 1, tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
-		BF_ROUND(R1, L1, 1, tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
-		BF_ROUND(L0, R0, 2, tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
-		BF_ROUND(L1, R1, 2, tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
-		BF_ROUND(R0, L0, 3, tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
-		BF_ROUND(R1, L1, 3, tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
-		BF_ROUND(L0, R0, 4, tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
-		BF_ROUND(L1, R1, 4, tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
-		BF_ROUND(R0, L0, 5, tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
-		BF_ROUND(R1, L1, 5, tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
-		BF_ROUND(L0, R0, 6, tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
-		BF_ROUND(L1, R1, 6, tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
-		BF_ROUND(R0, L0, 7, tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
-		BF_ROUND(R1, L1, 7, tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
-		BF_ROUND(L0, R0, 8, tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
-		BF_ROUND(L1, R1, 8, tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
-		BF_ROUND(R0, L0, 9, tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
-		BF_ROUND(R1, L1, 9, tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
-		BF_ROUND(L0, R0, 10, tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
-		BF_ROUND(L1, R1, 10, tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
-		BF_ROUND(R0, L0, 11, tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
-		BF_ROUND(R1, L1, 11, tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
-		BF_ROUND(L0, R0, 12, tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
-		BF_ROUND(L1, R1, 12, tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
-		BF_ROUND(R0, L0, 13, tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
-		BF_ROUND(R1, L1, 13, tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
-		BF_ROUND(L0, R0, 14, tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
-		BF_ROUND(L1, R1, 14, tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
-		BF_ROUND(R0, L0, 15, tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
-		BF_ROUND(R1, L1, 15, tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
-		
+		BF_ROUND(L0, R0, ctx0->s.P[1], tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
+		BF_ROUND(L1, R1, ctx1->s.P[1], tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
+		BF_ROUND(R0, L0, ctx0->s.P[2], tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
+		BF_ROUND(R1, L1, ctx1->s.P[2], tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
+		BF_ROUND(L0, R0, ctx0->s.P[3], tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
+		BF_ROUND(L1, R1, ctx1->s.P[3], tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
+		BF_ROUND(R0, L0, ctx0->s.P[4], tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
+		BF_ROUND(R1, L1, ctx1->s.P[4], tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
+		BF_ROUND(L0, R0, ctx0->s.P[5], tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
+		BF_ROUND(L1, R1, ctx1->s.P[5], tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
+		BF_ROUND(R0, L0, ctx0->s.P[6], tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
+		BF_ROUND(R1, L1, ctx1->s.P[6], tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
+		BF_ROUND(L0, R0, ctx0->s.P[7], tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
+		BF_ROUND(L1, R1, ctx1->s.P[7], tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
+		BF_ROUND(R0, L0, ctx0->s.P[8], tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
+		BF_ROUND(R1, L1, ctx1->s.P[8], tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
+		BF_ROUND(L0, R0, ctx0->s.P[9], tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
+		BF_ROUND(L1, R1, ctx1->s.P[9], tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
+		BF_ROUND(R0, L0, ctx0->s.P[10], tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
+		BF_ROUND(R1, L1, ctx1->s.P[10], tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
+		BF_ROUND(L0, R0, ctx0->s.P[11], tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
+		BF_ROUND(L1, R1, ctx1->s.P[11], tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
+		BF_ROUND(R0, L0, ctx0->s.P[12], tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
+		BF_ROUND(R1, L1, ctx1->s.P[12], tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
+		BF_ROUND(L0, R0, ctx0->s.P[13], tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
+		BF_ROUND(L1, R1, ctx1->s.P[13], tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
+		BF_ROUND(R0, L0, ctx0->s.P[14], tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
+		BF_ROUND(R1, L1, ctx1->s.P[14], tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
+		BF_ROUND(L0, R0, ctx0->s.P[15], tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
+		BF_ROUND(L1, R1, ctx1->s.P[15], tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
+		BF_ROUND(R0, L0, ctx0->s.P[16], tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
+		BF_ROUND(R1, L1, ctx1->s.P[16], tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
+	
 		tmpa4 = R0;
 		tmpb4 = R1;
 		R0 = L0;
 		R1 = L1;
-		L0 = tmpa4 ^ ctx0->s.P[BF_ROUNDS + 1];
-		L1 = tmpb4 ^ ctx1->s.P[BF_ROUNDS + 1];
+		L0 = tmpa4 ^ ctx0->s.P[17];
+		L1 = tmpb4 ^ ctx1->s.P[17];
+		*ptr = L0; \
+		*(ptr + 1) = R0; \
+		*(ptr + (ctx1->s.P - ctx0->s.P)) = L1; \
+		*(ptr + (ctx1->s.P - ctx0->s.P) + 1) = R1; \
+		ptr += 2; \
+	} while (ptr < &ctx0->s.P[BF_ROUNDS + 2]);
+	
+	BF_word P0[BF_ROUNDS + 2];
+	BF_word P1[BF_ROUNDS + 2];
+	
+	P0[0] = ctx0->s.P[0];
+	P0[1] = ctx0->s.P[1];
+	P0[2] = ctx0->s.P[2];
+	P0[3] = ctx0->s.P[3];
+	P0[4] = ctx0->s.P[4];
+	P0[5] = ctx0->s.P[5];
+	P0[6] = ctx0->s.P[6];
+	P0[7] = ctx0->s.P[7];
+	P0[8] = ctx0->s.P[8];
+	P0[9] = ctx0->s.P[9];
+	P0[10] = ctx0->s.P[10];
+	P0[11] = ctx0->s.P[11];
+	P0[12] = ctx0->s.P[12];
+	P0[13] = ctx0->s.P[13];
+	P0[14] = ctx0->s.P[14];
+	P0[15] = ctx0->s.P[15];
+	P0[16] = ctx0->s.P[16];
+	P0[17] = ctx0->s.P[17];
+	P1[0] = ctx1->s.P[0];
+	P1[1] = ctx1->s.P[1];
+	P1[2] = ctx1->s.P[2];
+	P1[3] = ctx1->s.P[3];
+	P1[4] = ctx1->s.P[4];
+	P1[5] = ctx1->s.P[5];
+	P1[6] = ctx1->s.P[6];
+	P1[7] = ctx1->s.P[7];
+	P1[8] = ctx1->s.P[8];
+	P1[9] = ctx1->s.P[9];
+	P1[10] = ctx1->s.P[10];
+	P1[11] = ctx1->s.P[11];
+	P1[12] = ctx1->s.P[12];
+	P1[13] = ctx1->s.P[13];
+	P1[14] = ctx1->s.P[14];
+	P1[15] = ctx1->s.P[15];
+	P1[16] = ctx1->s.P[16];
+	P1[17] = ctx1->s.P[17];
+	P1[18] = ctx1->s.P[18];
+	
+	ptr = ctx0->s.S[0];
+	
+	do {
+		
+		L0 ^= P0[0];
+		L1 ^= P1[0];
+		
+		BF_ROUND(L0, R0, P0[1], tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
+		BF_ROUND(L1, R1, P1[1], tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
+		BF_ROUND(R0, L0, P0[2], tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
+		BF_ROUND(R1, L1, P1[2], tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
+		BF_ROUND(L0, R0, P0[3], tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
+		BF_ROUND(L1, R1, P1[3], tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
+		BF_ROUND(R0, L0, P0[4], tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
+		BF_ROUND(R1, L1, P1[4], tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
+		BF_ROUND(L0, R0, P0[5], tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
+		BF_ROUND(L1, R1, P1[5], tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
+		BF_ROUND(R0, L0, P0[6], tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
+		BF_ROUND(R1, L1, P1[6], tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
+		BF_ROUND(L0, R0, P0[7], tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
+		BF_ROUND(L1, R1, P1[7], tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
+		BF_ROUND(R0, L0, P0[8], tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
+		BF_ROUND(R1, L1, P1[8], tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
+		BF_ROUND(L0, R0, P0[9], tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
+		BF_ROUND(L1, R1, P1[9], tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
+		BF_ROUND(R0, L0, P0[10], tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
+		BF_ROUND(R1, L1, P1[10], tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
+		BF_ROUND(L0, R0, P0[11], tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
+		BF_ROUND(L1, R1, P1[11], tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
+		BF_ROUND(R0, L0, P0[12], tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
+		BF_ROUND(R1, L1, P1[12], tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
+		BF_ROUND(L0, R0, P0[13], tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
+		BF_ROUND(L1, R1, P1[13], tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
+		BF_ROUND(R0, L0, P0[14], tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
+		BF_ROUND(R1, L1, P1[14], tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
+		BF_ROUND(L0, R0, P0[15], tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
+		BF_ROUND(L1, R1, P1[15], tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
+		BF_ROUND(R0, L0, P0[16], tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
+		BF_ROUND(R1, L1, P1[16], tmpb1, tmpb2, tmpb3, tmpb4, ctx1);	
+
+		tmpa4 = R0;
+		tmpb4 = R1;
+		R0 = L0;
+		R1 = L1;
+		L0 = tmpa4 ^ P0[17];
+		L1 = tmpb4 ^ P1[17];
 		*ptr = L0; \
 		*(ptr + 1) = R0; \
 		*(ptr + (ctx1->s.P - ctx0->s.P)) = L1; \
@@ -550,14 +646,14 @@ static BF_word BF_encrypt(BF_ctx *ctx,
 		"loop: add r45, %[ctx], 0x4\n"
 		"ldr r27, [%[ctx], +0]\n"
 		"eor %[L], r27, %[L]\n"
-		BF_2ROUND(L, R, 0)
-		BF_2ROUND(L, R, 2)
-		BF_2ROUND(L, R, 4)
-		BF_2ROUND(L, R, 6)
-		BF_2ROUND(L, R, 8)
-		BF_2ROUND(L, R, 10)
-		BF_2ROUND(L, R, 12)
-		BF_2ROUND(L, R, 14)
+		BF_2ROUND
+		BF_2ROUND
+		BF_2ROUND
+		BF_2ROUND
+		BF_2ROUND
+		BF_2ROUND
+		BF_2ROUND
+		BF_2ROUND
 		"ldr r27, [%[ctx], +0x11]\n"
 		"add %[ptr], %[ptr], 8\n"
 		"eor r24, r27, %[R]\n"
@@ -575,22 +671,22 @@ static BF_word BF_encrypt(BF_ctx *ctx,
 	do {
 		L ^= ctx->s.P[0];
 #if 1
-		BF_ROUND(L, R, 0, tmp1, tmp2, tmp3, tmp4, ctx);
-		BF_ROUND(R, L, 1, tmp1, tmp2, tmp3, tmp4, ctx);
-		BF_ROUND(L, R, 2, tmp1, tmp2, tmp3, tmp4, ctx);
-		BF_ROUND(R, L, 3, tmp1, tmp2, tmp3, tmp4, ctx);
-		BF_ROUND(L, R, 4, tmp1, tmp2, tmp3, tmp4, ctx);
-		BF_ROUND(R, L, 5, tmp1, tmp2, tmp3, tmp4, ctx);
-		BF_ROUND(L, R, 6, tmp1, tmp2, tmp3, tmp4, ctx);
-		BF_ROUND(R, L, 7, tmp1, tmp2, tmp3, tmp4, ctx);
-		BF_ROUND(L, R, 8, tmp1, tmp2, tmp3, tmp4, ctx);
-		BF_ROUND(R, L, 9, tmp1, tmp2, tmp3, tmp4, ctx);
-		BF_ROUND(L, R, 10, tmp1, tmp2, tmp3, tmp4, ctx);
-		BF_ROUND(R, L, 11, tmp1, tmp2, tmp3, tmp4, ctx);
-		BF_ROUND(L, R, 12, tmp1, tmp2, tmp3, tmp4, ctx);
-		BF_ROUND(R, L, 13, tmp1, tmp2, tmp3, tmp4, ctx);
-		BF_ROUND(L, R, 14, tmp1, tmp2, tmp3, tmp4, ctx);
-		BF_ROUND(R, L, 15, tmp1, tmp2, tmp3, tmp4, ctx);
+		BF_ROUND(L, R, ctx->s.P[1], tmp1, tmp2, tmp3, tmp4, ctx);
+		BF_ROUND(R, L, ctx->s.P[2], tmp1, tmp2, tmp3, tmp4, ctx);
+		BF_ROUND(L, R, ctx->s.P[3], tmp1, tmp2, tmp3, tmp4, ctx);
+		BF_ROUND(R, L, ctx->s.P[4], tmp1, tmp2, tmp3, tmp4, ctx);
+		BF_ROUND(L, R, ctx->s.P[5], tmp1, tmp2, tmp3, tmp4, ctx);
+		BF_ROUND(R, L, ctx->s.P[6], tmp1, tmp2, tmp3, tmp4, ctx);
+		BF_ROUND(L, R, ctx->s.P[7], tmp1, tmp2, tmp3, tmp4, ctx);
+		BF_ROUND(R, L, ctx->s.P[8], tmp1, tmp2, tmp3, tmp4, ctx);
+		BF_ROUND(L, R, ctx->s.P[9], tmp1, tmp2, tmp3, tmp4, ctx);
+		BF_ROUND(R, L, ctx->s.P[10], tmp1, tmp2, tmp3, tmp4, ctx);
+		BF_ROUND(L, R, ctx->s.P[11], tmp1, tmp2, tmp3, tmp4, ctx);
+		BF_ROUND(R, L, ctx->s.P[12], tmp1, tmp2, tmp3, tmp4, ctx);
+		BF_ROUND(L, R, ctx->s.P[13], tmp1, tmp2, tmp3, tmp4, ctx);
+		BF_ROUND(R, L, ctx->s.P[14], tmp1, tmp2, tmp3, tmp4, ctx);
+		BF_ROUND(L, R, ctx->s.P[15], tmp1, tmp2, tmp3, tmp4, ctx);
+		BF_ROUND(R, L, ctx->s.P[16], tmp1, tmp2, tmp3, tmp4, ctx);
 
 #else
 		for (int i=0; i<16; i+=2) {
