@@ -393,7 +393,6 @@ static int crypt_all(int *pcount, struct db_salt *salt)
 	int core_start = 0;
 	int done[EPIPHANY_CORES] = {0};
 	int t[16] = {0};
-	struct timeval start, end;
 	BF_key test = {0};
 	BF_salt test_salt = {0};
 	
@@ -412,16 +411,13 @@ static int crypt_all(int *pcount, struct db_salt *salt)
 		ERR(e_write(&emem, 0, 0, offsetof(data, setting[i]), &saved_salt, sizeof(BF_salt)), "Writing salt to shared memory failed!\n");
 		ERR(e_write(&emem, 0, 0, offsetof(data, init_key[i]), &BF_init_key[i], sizeof(BF_key)), "Writing key to shared memory failed!\n");
 		ERR(e_write(&emem, 0, 0, offsetof(data, exp_key[i]), &BF_exp_key[i], sizeof(BF_key)), "Writing key to shared memory failed!\n");
-		//printf("%d: %s\n", i, get_key(i));
 #ifdef interleave
 		ERR(e_write(&emem, 0, 0, offsetof(data, init_key[i + EPIPHANY_CORES]), &BF_init_key[i + EPIPHANY_CORES], sizeof(BF_key)), "Writing key to shared memory failed!\n");
 		ERR(e_write(&emem, 0, 0, offsetof(data, exp_key[i + EPIPHANY_CORES]), &BF_exp_key[i + EPIPHANY_CORES], sizeof(BF_key)), "Writing key to shared memory failed!\n");
-		//printf("%d: %s\n", i + EPIPHANY_CORES, get_key(i + EPIPHANY_CORES));
 #endif
 		ERR(e_write(&emem, 0, 0, offsetof(data, start[i]), &core_start, sizeof(core_start)), "Writing start failed!\n");
 	}
 	
-	gettimeofday(&start, NULL);
 	for(i = 0; i < platform.rows*platform.cols; i++)
 	{
 		while(done[i] != i + 1)
@@ -431,25 +427,6 @@ static int crypt_all(int *pcount, struct db_salt *salt)
 		ERR(e_read(&emem, 0, 0, offsetof(data, result[i + EPIPHANY_CORES]), parallella_BF_out[i + EPIPHANY_CORES], sizeof(BF_binary)), "Reading result failed!\n");
 #endif
 	}
-	gettimeofday(&end, NULL);
-	
-#ifdef _DEBUG1
-	fprintf(stderr, "Execution time - Epiphany: %f ms\n", (double)(end.tv_sec - start.tv_sec)*1000 + ((double)(end.tv_usec - start.tv_usec)/1000.0));
-	for(i = 0; i < platform.rows; i++)
-	{
-		for(j = 0; j < platform.cols; j++)
-		{
-			fprintf(stderr, "eCore 0x%03x (%d, %d): %x", ((i + platform.row) * 64 + j + platform.col), i, j, parallella_BF_out[i*platform.rows + j][0]);
-			fprintf(stderr, ", %x", parallella_BF_out[i*platform.rows + j][1]);
-			fprintf(stderr, "\n");
-#ifdef interleave
-			fprintf(stderr, "eCore 0x%03x (%d, %d): %x", ((i + platform.row) * 64 + j + platform.col), i, j, parallella_BF_out[i*platform.rows + j + EPIPHANY_CORES][0]);
-			fprintf(stderr, ", %x", parallella_BF_out[i*platform.rows + j + EPIPHANY_CORES][1]);
-			fprintf(stderr, "\n");
-#endif
-		}
-	}
-#endif
 	
 	return count;
 }

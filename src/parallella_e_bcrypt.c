@@ -448,6 +448,80 @@ static const unsigned char BF_atoi64[0x60] = {
 		"add r23, r23, r44\n" \
 		"eor %[L], %[L], r23\n"
 
+#define BF2_2ROUND \
+		"and r44, %[L0], %[c2]\n" \
+		"lsr r23, %[L0], 0xe\n" \
+		"and r23, r23, %[c1]\n" \
+		"lsr r24, %[L0], 0x16\n" \
+		"and r24, r24, %[c1]\n" \
+		"imadd r44, r44, %[c]\n" \
+		"ldr r23, [%[s01], +r23]\n" \
+		"ldr r24, [%[s00], +r24]\n" \
+		"lsr r22, %[L0], 6\n" \
+		"and r22, r22, %[c1]\n" \
+		"iadd r23, r24, r23\n" \
+		"ldr r22, [%[s02], +r22]\n" \
+		"ldr r27, [r45], 0x1\n" \
+		"ldr r44, [%[s03], +r44]\n" \
+		"lsr r60, %[L1], 0x18\n" \
+		"eor %[R0], %[R0], r27\n" \
+		"eor r23, r22, r23\n" \
+		"imadd r60, r60, %[c]\n" \
+		"and r61, %[L1], %[c2]\n" \
+		"lsr r63, %[L1], 0xe\n" \
+		"and r63, r63, %[c1]\n" \
+		"iadd r23, r23, r44\n" \
+		"imadd r61, r61, %[c]\n" \
+		"ldr r63, [%[s11], +r63]\n" \
+		"ldr r60, [%[s10], +r60]\n" \
+		"lsr r62, %[L1], 6\n" \
+		"and r62, r62, %[c1]\n" \
+		"eor %[R0], %[R0], r23\n" \
+		"iadd r63, r60, r63\n" \
+		"ldr r62, [%[s12], +r62]\n" \
+		"ldr r27, [r46], 0x1\n" \
+		"ldr r61, [%[s13], +r61]\n" \
+		"lsr r24, %[R0], 0x18\n" \
+		"eor %[R1], %[R1], r27\n" \
+		"eor r63, r62, r63\n" \
+		"imadd r24, r24, %[c]\n" \
+		"and r44, %[R0], %[c2]\n" \
+		"lsr r23, %[R0], 0xe\n" \
+		"and r23, r23, %[c1]\n" \
+		"iadd r63, r63, r61\n" \
+		"imadd r44, r44, %[c]\n" \
+		"ldr r23, [%[s01], +r23]\n" \
+		"ldr r24, [%[s00], +r24]\n" \
+		"lsr r22, %[R0], 6\n" \
+		"and r22, r22, %[c1]\n" \
+		"eor %[R1], %[R1], r63\n" \
+		"iadd r23, r24, r23\n" \
+		"ldr r22, [%[s02], +r22]\n" \
+		"ldr r27, [r45], 0x1\n" \
+		"ldr r44, [%[s03], +r44]\n" \
+		"lsr r60, %[R1], 0x18\n" \
+		"eor %[L0], %[L0], r27\n" \
+		"eor r23, r22, r23\n" \
+		"imadd r60, r60, %[c]\n" \
+		"and r61, %[R1], %[c2]\n" \
+		"lsr r63, %[R1], 0xe\n" \
+		"and r63, r63, %[c1]\n" \
+		"iadd r23, r23, r44\n" \
+		"imadd r61, r61, %[c]\n" \
+		"ldr r63, [%[s11], +r63]\n" \
+		"ldr r60, [%[s10], +r60]\n" \
+		"lsr r62, %[R1], 6\n" \
+		"and r62, r62, %[c1]\n" \
+		"eor %[L0], %[L0], r23\n"\
+		"iadd r63, r60, r63\n" \
+		"ldr r62, [%[s12], +r62]\n" \
+		"ldr r27, [r46], 0x1\n" \
+		"ldr r61, [%[s13], +r61]\n" \
+		"eor %[L1], %[L1], r27\n" \
+		"eor r63, r62, r63\n" \
+		"add r63, r63, r61\n" \
+		"eor %[L1], %[L1], r63\n"
+
 /* Architectures with no complicated addressing modes supported */
 #define BF_INDEX(S, i) \
 	(*((BF_word *)(((unsigned char *)S) + (i))))
@@ -473,13 +547,49 @@ static void BF_encrypt2(BF_ctx *ctx0, BF_word L0, BF_word R0, BF_ctx *ctx1, BF_w
 {
 	BF_word tmpa1, tmpa2, tmpa3, tmpa4;
 	BF_word tmpb1, tmpb2, tmpb3, tmpb4;
-	BF_word *ptr;
+	BF_word *ptr, *end;
 	int i = 0;
+	
+	BF_word *s00 = ctx0->s.S[0];
+	BF_word *s01 = ctx0->s.S[1];
+	BF_word *s02 = ctx0->s.S[2];
+	BF_word *s03 = ctx0->s.S[3];
+	BF_word *s10 = ctx1->s.S[0];
+	BF_word *s11 = ctx1->s.S[1];
+	BF_word *s12 = ctx1->s.S[2];
+	BF_word *s13 = ctx1->s.S[3];
+	
+	const int c = 3;
+	const int const1 = 0x3FC;
+	const int const2 = 0xFF;
 	
 	ptr = ctx0->s.P;
 	
 	do
 	{	
+#ifdef assembly
+		__asm__ __volatile__(
+			"add r45, %[ctx0], 0x4\n"
+			"add r46, %[ctx1], 0x4\n"
+			"ldr r27, [%[ctx0], +0]\n"
+			"eor %[L0], r27, %[L0]\n"
+			"ldr r27, [%[ctx1], +0]\n"
+			"eor %[L1], r27, %[L1]\n"
+			BF2_2ROUND
+			BF2_2ROUND
+			BF2_2ROUND
+			BF2_2ROUND
+			BF2_2ROUND
+			BF2_2ROUND
+			BF2_2ROUND
+			BF2_2ROUND
+			: [R0] "+r" (R0), [L0] "+r" (L0), [R1] "+r" (R1), [L1] "+r" (L1)
+			: [ctx0] "r" (ctx0), [ctx1] "r" (ctx1), [s00] "r" (s00), [s01] "r" (s01), [s02] "r" (s02), \
+			[s03] "r" (s03), [s10] "r" (s10), [s11] "r" (s11), [s12] "r" (s12), [s13] "r" (s13), \
+			[c] "r" (c), [c1] "r" (const1), [c2] "r" (const2)
+			: "r22", "r23", "r24", "r27", "r44", "r45", "r46", "r61", "r62", "r63", "r60"
+		);
+#else
 		L0 ^= ctx0->s.P[0];
 		L1 ^= ctx1->s.P[0];
 		
@@ -515,7 +625,7 @@ static void BF_encrypt2(BF_ctx *ctx0, BF_word L0, BF_word R0, BF_ctx *ctx1, BF_w
 		BF_ROUND(L1, R1, ctx1->s.P[15], tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
 		BF_ROUND(R0, L0, ctx0->s.P[16], tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
 		BF_ROUND(R1, L1, ctx1->s.P[16], tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
-	
+#endif		
 		tmpa4 = R0;
 		tmpb4 = R1;
 		R0 = L0;
@@ -529,6 +639,7 @@ static void BF_encrypt2(BF_ctx *ctx0, BF_word L0, BF_word R0, BF_ctx *ctx1, BF_w
 		ptr += 2; \
 	} while (ptr < &ctx0->s.P[BF_ROUNDS + 2]);
 	
+#ifndef assembly
 	BF_word P0[BF_ROUNDS + 2];
 	BF_word P1[BF_ROUNDS + 2];
 	
@@ -568,12 +679,39 @@ static void BF_encrypt2(BF_ctx *ctx0, BF_word L0, BF_word R0, BF_ctx *ctx1, BF_w
 	P1[15] = ctx1->s.P[15];
 	P1[16] = ctx1->s.P[16];
 	P1[17] = ctx1->s.P[17];
-	P1[18] = ctx1->s.P[18];
+#else
+	BF_word P00, P10, P017, P117;
+	P00 = ctx0->s.P[0];
+	P017 = ctx0->s.P[17];
+	P10 = ctx1->s.P[0];
+	P117 = ctx1->s.P[17];
+#endif
 	
 	ptr = ctx0->s.S[0];
+	end = &ctx0->PS[BF_ROUNDS + 2 + 4 * 0x100];
 	
 	do {
-		
+#ifdef assembly
+		__asm__ __volatile__(
+			"add r45, %[ctx0], 0x4\n"
+			"add r46, %[ctx1], 0x4\n"
+			"eor %[L0], %[P00], %[L0]\n"
+			"eor %[L1], %[P10], %[L1]\n"
+			BF2_2ROUND
+			BF2_2ROUND
+			BF2_2ROUND
+			BF2_2ROUND
+			BF2_2ROUND
+			BF2_2ROUND
+			BF2_2ROUND
+			BF2_2ROUND
+			: [R0] "+r" (R0), [L0] "+r" (L0), [R1] "+r" (R1), [L1] "+r" (L1)
+			: [ptr] "r" (ptr), [end] "r" (end), [ctx0] "r" (ctx0), [ctx1] "r" (ctx1), [s00] "r" (s00), \
+			[s01] "r" (s01), [s02] "r" (s02), [s03] "r" (s03), [s10] "r" (s10), [s11] "r" (s11), [s12] "r" (s12), \
+			[s13] "r" (s13), [c] "r" (c), [c1] "r" (const1), [c2] "r" (const2), [P00] "r" (P00), [P10] "r" (P10)
+			: "r22", "r23", "r24", "r27", "r44", "r45", "r46", "r61", "r62", "r63", "r60"
+		);
+#else
 		L0 ^= P0[0];
 		L1 ^= P1[0];
 		
@@ -609,13 +747,18 @@ static void BF_encrypt2(BF_ctx *ctx0, BF_word L0, BF_word R0, BF_ctx *ctx1, BF_w
 		BF_ROUND(L1, R1, P1[15], tmpb1, tmpb2, tmpb3, tmpb4, ctx1);
 		BF_ROUND(R0, L0, P0[16], tmpa1, tmpa2, tmpa3, tmpa4, ctx0);
 		BF_ROUND(R1, L1, P1[16], tmpb1, tmpb2, tmpb3, tmpb4, ctx1);	
-
+#endif	
 		tmpa4 = R0;
 		tmpb4 = R1;
 		R0 = L0;
 		R1 = L1;
+#ifdef assembly
+		L0 = tmpa4 ^ P017;
+		L1 = tmpb4 ^ P117;
+#else
 		L0 = tmpa4 ^ P0[17];
 		L1 = tmpb4 ^ P1[17];
+#endif
 		*ptr = L0; \
 		*(ptr + 1) = R0; \
 		*(ptr + (ctx1->s.P - ctx0->s.P)) = L1; \
@@ -623,6 +766,7 @@ static void BF_encrypt2(BF_ctx *ctx0, BF_word L0, BF_word R0, BF_ctx *ctx1, BF_w
 		ptr += 2; \
 		
 	} while (ptr < &ctx0->PS[BF_ROUNDS + 2 + 4 * 0x100]);
+
 }
 
 static BF_word BF_encrypt(BF_ctx *ctx,
