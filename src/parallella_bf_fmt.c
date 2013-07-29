@@ -169,8 +169,6 @@ static void init(struct fmt_main *self)
 	keys_mode = 'y';
 	sign_extension_bug = 0;
 	
-	//saved_salt = (char *)malloc(SALT_SIZE + 1);
-	
 	ERR(e_init(NULL),"Init of Epiphany chip failed!\n");
 	
 	ERR(e_reset_system(), "Reset of Epiphany chip failed!\n");
@@ -185,9 +183,7 @@ static void init(struct fmt_main *self)
 }
 
 static void done(void)
-{
-	//free(saved_salt);
-	
+{	
 	ERR(e_close(&dev), "Closing Epiphany chip failed!\n");
 	ERR(e_free(&emem), "Freeing memory failed!\n");
 	ERR(e_finalize(), "e_finalize failed!\n");
