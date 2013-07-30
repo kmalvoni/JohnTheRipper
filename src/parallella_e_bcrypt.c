@@ -84,11 +84,11 @@ typedef struct {
 typedef struct
 {
 	BF_binary result[MAX_KEYS_PER_CRYPT];
-	volatile int start[EPIPHANY_CORES];
 	int core_done[EPIPHANY_CORES];
 	BF_key init_key[MAX_KEYS_PER_CRYPT];
 	BF_key exp_key[MAX_KEYS_PER_CRYPT];
 	BF_salt setting[EPIPHANY_CORES];
+	volatile int start[EPIPHANY_CORES];
 }data;
 
 static BF_binary BF_out;
@@ -899,6 +899,7 @@ int main(void)
 		BF_crypt();
 		
 		out.core_done[corenum] = corenum + 1;
+		
 			
 	}while(1);
 

@@ -48,8 +48,6 @@
 
 #define BF_ROUNDS				16
 
-//#define _DEBUG
-
 #define ERR(x,s) \
 if((x) == E_ERR) {\
 	fprintf(stderr, s); \
@@ -74,11 +72,11 @@ typedef struct {
 typedef struct
 {
 	BF_binary result[MAX_KEYS_PER_CRYPT];
-	int start[EPIPHANY_CORES];
 	int core_done[EPIPHANY_CORES];
 	BF_key init_key[MAX_KEYS_PER_CRYPT];
 	BF_key exp_key[MAX_KEYS_PER_CRYPT];
 	BF_salt setting[EPIPHANY_CORES];
+	int start[EPIPHANY_CORES];
 }data;
 
 static BF_binary parallella_BF_out[MAX_KEYS_PER_CRYPT];
@@ -388,9 +386,7 @@ static int crypt_all(int *pcount, struct db_salt *salt)
 	int i, j, k = 0;
 	int core_start = 0;
 	int done[EPIPHANY_CORES] = {0};
-	int t[16] = {0};
-	BF_key test = {0};
-	BF_salt test_salt = {0};
+	data input;
 	
 	if (keys_mode != saved_salt.subtype) {
 		int i;
@@ -404,15 +400,17 @@ static int crypt_all(int *pcount, struct db_salt *salt)
 	core_start = 16;
 	for(i = 0; i < platform.rows*platform.cols; i++)
 	{
-		ERR(e_write(&emem, 0, 0, offsetof(data, setting[i]), &saved_salt, sizeof(BF_salt)), "Writing salt to shared memory failed!\n");
-		ERR(e_write(&emem, 0, 0, offsetof(data, init_key[i]), &BF_init_key[i], sizeof(BF_key)), "Writing key to shared memory failed!\n");
-		ERR(e_write(&emem, 0, 0, offsetof(data, exp_key[i]), &BF_exp_key[i], sizeof(BF_key)), "Writing key to shared memory failed!\n");
+		memcpy(&input.setting[i], &saved_salt, sizeof(BF_salt));
+		memcpy(&input.init_key[i], &BF_init_key[i], sizeof(BF_key));
+		memcpy(&input.exp_key[i], &BF_exp_key[i], sizeof(BF_key));
 #ifdef interleave
-		ERR(e_write(&emem, 0, 0, offsetof(data, init_key[i + EPIPHANY_CORES]), &BF_init_key[i + EPIPHANY_CORES], sizeof(BF_key)), "Writing key to shared memory failed!\n");
-		ERR(e_write(&emem, 0, 0, offsetof(data, exp_key[i + EPIPHANY_CORES]), &BF_exp_key[i + EPIPHANY_CORES], sizeof(BF_key)), "Writing key to shared memory failed!\n");
+		memcpy(&input.init_key[i + EPIPHANY_CORES], &BF_init_key[i + EPIPHANY_CORES], sizeof(BF_key));
+		memcpy(&input.exp_key[i + EPIPHANY_CORES], &BF_exp_key[i + EPIPHANY_CORES], sizeof(BF_key));
 #endif
-		ERR(e_write(&emem, 0, 0, offsetof(data, start[i]), &core_start, sizeof(core_start)), "Writing start failed!\n");
+		memcpy(&input.start[i], &core_start, sizeof(core_start));
 	}
+	
+	ERR(e_write(&emem, 0, 0, 0, &input, sizeof(data)), "Writing input data failed!\n");
 	
 	for(i = 0; i < platform.rows*platform.cols; i++)
 	{
