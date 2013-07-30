@@ -107,7 +107,7 @@ default:
 	@echo "linux-x86-mmx            Linux, x86 32-bit with MMX (for old computers)"
 	@echo "linux-x86-any            Linux, x86 32-bit (for truly ancient computers)"
 	@echo "linux-arm32le-neon       Linux, ARM 32-bit little-endian w/NEON (best)"
-	@echo "linux-arm32le-neon-parallella" Linux, ARM 32-bit little-endian w/NEON, Parallella
+	@echo "linux-parallella" 		Linux, ARM 32-bit little-endian w/NEON, Parallella
 	@echo "linux-arm32le            Linux, ARM 32-bit little-endian"
 	@echo "linux-alpha              Linux, Alpha"
 	@echo "linux-sparc              Linux, SPARC 32-bit"
@@ -260,13 +260,13 @@ linux-arm32le-neon:
 		CFLAGS="$(CFLAGS) -mfpu=neon -DHAVE_CRYPT" \
 		LDFLAGS="$(LDFLAGS) -lcrypt"
 
-linux-arm32le-neon-parallella:
+linux-parallella:
 	$(LN) arm32le.h arch.h
 	$(MAKE) $(PROJ) \
 		JOHN_OBJS="$(JOHN_OBJS) $(PARALLELLA_OBJS) c3_fmt.o" \
 		CFLAGS="$(CFLAGS) -mfpu=neon -DHAVE_CRYPT -DHAVE_PARALLELLA" \
 		LDFLAGS="$(LDFLAGS) -L${ELIBS} -lcrypt -le-hal"
-	e-gcc -std=c99 -T ${ELDF} -O2 -mfp-mode=int parallella_e_bcrypt.c parallella_bf_encrypt2.s -o ../run/parallella_e_bcrypt.elf -le-lib
+	e-gcc -std=c99 -T ${ELDF} -O2 -mfp-mode=int parallella_e_bcrypt.c parallella_e_bcrypt.s -o ../run/parallella_e_bcrypt.elf -le-lib
 	e-objcopy --srec-forceS3 --output-target srec ../run/parallella_e_bcrypt.elf ../run/parallella_e_bcrypt.srec
 
 linux-arm32le:
