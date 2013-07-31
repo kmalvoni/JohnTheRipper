@@ -7,10 +7,10 @@
 
 #define ctx0			r0
 #define ctx1			r1
-#define L0				r23
-#define R0				r12
-#define L1				r55
-#define R1				r56
+#define L0			r23
+#define R0			r12
+#define L1			r55
+#define R1			r56
 #define tmpa1			r57
 #define tmpb1			r61
 #define tmpa2			r22
@@ -19,23 +19,23 @@
 #define tmpb3			r63
 #define tmpa4			r24
 #define tmpb4			r60
-#define tmp				r44
-#define c1				r58
-#define c2				r59
-#define c3				r62
-#define P0				r45
-#define S00				r26
-#define S01				r16
-#define S02				r17
-#define S03				r18
-#define P1				r46
-#define S10				r19
-#define S11				r20
-#define S12				r21
-#define S13				r25
+#define tmp			r44
+#define c1			r58
+#define c2			r59
+#define c3			r62
+#define P0			r45
+#define S00			r26
+#define S01			r16
+#define S02			r17
+#define S03			r18
+#define P1			r46
+#define S10			r19
+#define S11			r20
+#define S12			r21
+#define S13			r25
 #define ptr0			r2
 #define ptr1			r27
-#define end				r3
+#define end			r3
 
     .text
     .globl _BF_encrypt2
@@ -244,16 +244,16 @@ loop1:
 #undef P0
 #undef P1
 
-#define P00				r4
-#define P01				r5
-#define P02				r6
-#define P03				r7
-#define P04				r8
-#define P05				r9
-#define P06				r10
-#define P07				r11
-#define P08				r14
-#define P09				r15
+#define P00			r4
+#define P01			r5
+#define P02			r6
+#define P03			r7
+#define P04			r8
+#define P05			r9
+#define P06			r10
+#define P07			r11
+#define P08			r14
+#define P09			r15
 #define P010			r28
 #define P011			r29
 #define P012			r30
@@ -263,16 +263,16 @@ loop1:
 #define P016			r34
 #define P017			r35
 
-#define P10				r36
-#define P11				r37
-#define P12				r38
-#define P13				r39
-#define P14				r40
-#define P15				r41
-#define P16				r42
-#define P17				r43
-#define P18				r44
-#define P19				r45
+#define P10			r36
+#define P11			r37
+#define P12			r38
+#define P13			r39
+#define P14			r40
+#define P15			r41
+#define P16			r42
+#define P17			r43
+#define P18			r44
+#define P19			r45
 #define P110			r46
 #define P111			r47
 #define P112			r48
