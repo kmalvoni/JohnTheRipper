@@ -39,14 +39,16 @@
 
 #define EPIPHANY_CORES			16
 #ifdef interleave
-#define MIN_KEYS_PER_CRYPT		EPIPHANY_CORES*2
-#define MAX_KEYS_PER_CRYPT		EPIPHANY_CORES*2
+#define MIN_KEYS_PER_CRYPT		(EPIPHANY_CORES*2)
+#define MAX_KEYS_PER_CRYPT		(EPIPHANY_CORES*2)
 #else
 #define MIN_KEYS_PER_CRYPT		EPIPHANY_CORES
 #define MAX_KEYS_PER_CRYPT		EPIPHANY_CORES
 #endif
 
 #define BF_ROUNDS				16
+
+#define _DEBUG
 
 #define ERR(x,s) \
 if((x) == E_ERR) {\
@@ -71,17 +73,29 @@ typedef struct {
 
 typedef struct
 {
-	BF_binary result[MAX_KEYS_PER_CRYPT];
-	int core_done[EPIPHANY_CORES];
+	BF_word salt[4];
+    unsigned char rounds;
+    int dummy_offset;
 	BF_key init_key[MAX_KEYS_PER_CRYPT];
 	BF_key exp_key[MAX_KEYS_PER_CRYPT];
-	BF_salt setting[EPIPHANY_CORES];
 	int start[EPIPHANY_CORES];
-}data;
+}inputs;
+
+typedef struct
+{
+	BF_binary result[MAX_KEYS_PER_CRYPT];
+	int core_done[EPIPHANY_CORES];
+}outputs;
+
+typedef struct 
+{
+	inputs in;
+	volatile outputs out;
+} shared_buffer;
 
 static BF_binary parallella_BF_out[MAX_KEYS_PER_CRYPT];
 
-#define _BufSize (sizeof(data))
+#define _BufSize (sizeof(shared_buffer))
 #define _BufOffset (0x01000000)
 
 static struct fmt_tests tests[] = {
@@ -290,11 +304,10 @@ static int get_hash_0(int index)
 #ifdef _DEBUG
 	puts("get_hash_0"); 
 	int i = 0;
-	for(i = 0; i < sizeof(BF_binary); i++)
+	for(i = 0; i < sizeof(BF_binary)/sizeof(BF_word); i++)
 		printf("%x ", parallella_BF_out[index][i]);
 	printf("\n");
 #endif
-
 	return parallella_BF_out[index][0] & 0xF;
 }
 
@@ -383,10 +396,12 @@ static int crypt_all(int *pcount, struct db_salt *salt)
 {
 	int count = *pcount;
 	
-	int i, j, k = 0;
+	int i, j, k, n = 0;
 	int core_start = 0;
 	int done[EPIPHANY_CORES] = {0};
-	data input;
+	inputs input;
+	outputs out;
+	struct timeval start, end;
 	
 	if (keys_mode != saved_salt.subtype) {
 		int i;
@@ -400,7 +415,8 @@ static int crypt_all(int *pcount, struct db_salt *salt)
 	core_start = 16;
 	for(i = 0; i < platform.rows*platform.cols; i++)
 	{
-		memcpy(&input.setting[i], &saved_salt, sizeof(BF_salt));
+		memcpy(&input.salt, &saved_salt.salt, sizeof(input.salt));
+		memcpy(&input.rounds, &saved_salt.rounds, sizeof(input.rounds));
 		memcpy(&input.init_key[i], &BF_init_key[i], sizeof(BF_key));
 		memcpy(&input.exp_key[i], &BF_exp_key[i], sizeof(BF_key));
 #ifdef interleave
@@ -410,15 +426,22 @@ static int crypt_all(int *pcount, struct db_salt *salt)
 		memcpy(&input.start[i], &core_start, sizeof(core_start));
 	}
 	
-	ERR(e_write(&emem, 0, 0, 0, &input, sizeof(data)), "Writing input data failed!\n");
+	ERR(e_write(&emem, 0, 0, 0, &input, sizeof(inputs)), "Writing input data failed!\n");
 	
 	for(i = 0; i < platform.rows*platform.cols; i++)
+		while(out.core_done[i] != i + 1)
+			ERR(e_read(&emem, 0, 0, offsetof(shared_buffer, out.core_done[i]), &out.core_done[i], sizeof(out.core_done[i])), "Reading results failed!\n");
+	
+	if (count < platform.rows*platform.cols)
+		n = count;
+	else
+		n = platform.rows*platform.cols;
+	
+	for(i = 0; i < n; i++)
 	{
-		while(done[i] != i + 1)
-			ERR(e_read(&emem, 0, 0, offsetof(data, core_done[i]), &done[i], sizeof(done[i])), "Reading done failed!\n");
-		ERR(e_read(&emem, 0, 0, offsetof(data, result[i]), parallella_BF_out[i], sizeof(BF_binary)), "Reading result failed!\n");
-#ifdef interleave
-		ERR(e_read(&emem, 0, 0, offsetof(data, result[i + EPIPHANY_CORES]), parallella_BF_out[i + EPIPHANY_CORES], sizeof(BF_binary)), "Reading result failed!\n");
+		ERR(e_read(&emem, 0, 0, offsetof(shared_buffer, out.result[i]), parallella_BF_out[i], sizeof(BF_binary)), "Reading results failed!\n");
+#ifdef interleave		
+		ERR(e_read(&emem, 0, 0, offsetof(shared_buffer, out.result[i + EPIPHANY_CORES]), parallella_BF_out[i + EPIPHANY_CORES], sizeof(BF_binary)), "Reading results failed!\n");
 #endif
 	}
 	
