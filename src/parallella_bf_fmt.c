@@ -22,7 +22,7 @@
 #define interleave
 
 #define FORMAT_LABEL			"bcrypt-parallella"
-#define FORMAT_NAME				"OpenBSD Blowfish"
+#define FORMAT_NAME			"OpenBSD Blowfish"
 
 #define BF_ALGORITHM_NAME		"Parallella"
 
@@ -32,10 +32,10 @@
 #define PLAINTEXT_LENGTH		72
 #define CIPHERTEXT_LENGTH		60
 
-#define BINARY_SIZE				8
+#define BINARY_SIZE			8
 #define BINARY_ALIGN			4
-#define SALT_SIZE				22+7
-#define SALT_ALIGN				4
+#define SALT_SIZE			22+7
+#define SALT_ALIGN			4
 
 #define EPIPHANY_CORES			16
 #ifdef interleave
@@ -46,9 +46,7 @@
 #define MAX_KEYS_PER_CRYPT		EPIPHANY_CORES
 #endif
 
-#define BF_ROUNDS				16
-
-#define _DEBUG
+#define BF_ROUNDS			16
 
 #define ERR(x,s) \
 if((x) == E_ERR) {\
