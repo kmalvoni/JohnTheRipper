@@ -496,8 +496,7 @@ static void BF_encrypt2(BF_ctx *ctx0, BF_ctx *ctx1)
 	
 	ptr = ctx0->s.P;
 	
-	do
-	{	
+	do {	
 		L0 ^= ctx0->s.P[0];
 		L1 ^= ctx1->s.P[0];
 		
@@ -540,11 +539,11 @@ static void BF_encrypt2(BF_ctx *ctx0, BF_ctx *ctx1)
 		R1 = L1;
 		L0 = tmpa4 ^ ctx0->s.P[17];
 		L1 = tmpb4 ^ ctx1->s.P[17];
-		*ptr = L0; \
-		*(ptr + 1) = R0; \
-		*(ptr + (ctx1->s.P - ctx0->s.P)) = L1; \
-		*(ptr + (ctx1->s.P - ctx0->s.P) + 1) = R1; \
-		ptr += 2; \
+		*ptr = L0;
+		*(ptr + 1) = R0;
+		*(ptr + (ctx1->s.P - ctx0->s.P)) = L1;
+		*(ptr + (ctx1->s.P - ctx0->s.P) + 1) = R1;
+		ptr += 2;
 	} while (ptr < &ctx0->s.P[BF_ROUNDS + 2]);
 	
 	BF_word P0[BF_ROUNDS + 2];
@@ -632,11 +631,11 @@ static void BF_encrypt2(BF_ctx *ctx0, BF_ctx *ctx1)
 		R1 = L1;
 		L0 = tmpa4 ^ P0[17];
 		L1 = tmpb4 ^ P1[17];
-		*ptr = L0; \
-		*(ptr + 1) = R0; \
-		*(ptr + (ctx1->s.P - ctx0->s.P)) = L1; \
-		*(ptr + (ctx1->s.P - ctx0->s.P) + 1) = R1; \
-		ptr += 2; \
+		*ptr = L0;
+		*(ptr + 1) = R0;
+		*(ptr + (ctx1->s.P - ctx0->s.P)) = L1;
+		*(ptr + (ctx1->s.P - ctx0->s.P) + 1) = R1;
+		ptr += 2;
 		
 	} while (ptr < &ctx0->PS[BF_ROUNDS + 2 + 4 * 0x100]);
 
@@ -752,8 +751,7 @@ static void *BF_crypt(void)
 	memcpy(current[1].ctx.s.P, (BF_key*)buff.in.init_key[corenum + EPIPHANY_CORES], sizeof(BF_key)); 
 #endif
 	
-	for(i = 0; i < n; i++)
-	{
+	for(i = 0; i < n; i++) {
 		count = (BF_word)1 << buff.in.rounds;
 		memcpy(current[i].binary.salt, (BF_word *)buff.in.salt, sizeof(current[i].binary.salt));
 
@@ -784,8 +782,7 @@ static void *BF_crypt(void)
 
 	do {
 		int done;
-		for(i = 0; i < n; i++)
-		{
+		for(i = 0; i < n; i++) {
 			current[i].ctx.s.P[0] ^= current[i].expanded_key[0];
 			current[i].ctx.s.P[1] ^= current[i].expanded_key[1];
 			current[i].ctx.s.P[2] ^= current[i].expanded_key[2];
@@ -807,44 +804,43 @@ static void *BF_crypt(void)
 		}
 
 #ifdef interleave
-			BF_encrypt2(&current[0].ctx, &current[1].ctx);
+		BF_encrypt2(&current[0].ctx, &current[1].ctx);
 #else
-			BF_encrypt(&current[0].ctx, 0, 0, &current[0].ctx.PS[0], &current[0].ctx.PS[BF_ROUNDS + 2 + 4 * 0x100]);
+		BF_encrypt(&current[0].ctx, 0, 0, &current[0].ctx.PS[0], &current[0].ctx.PS[BF_ROUNDS + 2 + 4 * 0x100]);
 #endif
-			{
-				BF_word tmp1, tmp2, tmp3, tmp4;
-				
-				for(i = 0; i < n; i++)
-				{
-					tmp1 = current[i].binary.salt[0];
-					tmp2 = current[i].binary.salt[1];
-					tmp3 = current[i].binary.salt[2];
-					tmp4 = current[i].binary.salt[3];
-					current[i].ctx.s.P[0] ^= tmp1;
-					current[i].ctx.s.P[1] ^= tmp2;
-					current[i].ctx.s.P[2] ^= tmp3;
-					current[i].ctx.s.P[3] ^= tmp4;
-					current[i].ctx.s.P[4] ^= tmp1;
-					current[i].ctx.s.P[5] ^= tmp2;
-					current[i].ctx.s.P[6] ^= tmp3;
-					current[i].ctx.s.P[7] ^= tmp4;
-					current[i].ctx.s.P[8] ^= tmp1;
-					current[i].ctx.s.P[9] ^= tmp2;
-					current[i].ctx.s.P[10] ^= tmp3;
-					current[i].ctx.s.P[11] ^= tmp4;
-					current[i].ctx.s.P[12] ^= tmp1;
-					current[i].ctx.s.P[13] ^= tmp2;
-					current[i].ctx.s.P[14] ^= tmp3;
-					current[i].ctx.s.P[15] ^= tmp4;
-					current[i].ctx.s.P[16] ^= tmp1;
-					current[i].ctx.s.P[17] ^= tmp2;
-				}
+		{
+			BF_word tmp1, tmp2, tmp3, tmp4;
+			
+			for(i = 0; i < n; i++) {
+				tmp1 = current[i].binary.salt[0];
+				tmp2 = current[i].binary.salt[1];
+				tmp3 = current[i].binary.salt[2];
+				tmp4 = current[i].binary.salt[3];
+				current[i].ctx.s.P[0] ^= tmp1;
+				current[i].ctx.s.P[1] ^= tmp2;
+				current[i].ctx.s.P[2] ^= tmp3;
+				current[i].ctx.s.P[3] ^= tmp4;
+				current[i].ctx.s.P[4] ^= tmp1;
+				current[i].ctx.s.P[5] ^= tmp2;
+				current[i].ctx.s.P[6] ^= tmp3;
+				current[i].ctx.s.P[7] ^= tmp4;
+				current[i].ctx.s.P[8] ^= tmp1;
+				current[i].ctx.s.P[9] ^= tmp2;
+				current[i].ctx.s.P[10] ^= tmp3;
+				current[i].ctx.s.P[11] ^= tmp4;
+				current[i].ctx.s.P[12] ^= tmp1;
+				current[i].ctx.s.P[13] ^= tmp2;
+				current[i].ctx.s.P[14] ^= tmp3;
+				current[i].ctx.s.P[15] ^= tmp4;
+				current[i].ctx.s.P[16] ^= tmp1;
+				current[i].ctx.s.P[17] ^= tmp2;
 			}
+		}
 		
 #ifdef interleave
-			BF_encrypt2(&current[0].ctx, &current[1].ctx);
+		BF_encrypt2(&current[0].ctx, &current[1].ctx);
 #else
-			BF_encrypt(&current[0].ctx, 0, 0, &current[0].ctx.PS[0], &current[0].ctx.PS[BF_ROUNDS + 2 + 4 * 0x100]);
+		BF_encrypt(&current[0].ctx, 0, 0, &current[0].ctx.PS[0], &current[0].ctx.PS[BF_ROUNDS + 2 + 4 * 0x100]);
 #endif
 		
 	} while (--count);
@@ -852,8 +848,7 @@ static void *BF_crypt(void)
 	{
 		BF_word L, LR[2];
 
-		for(i = 0; i < n; i++)
-		{
+		for(i = 0; i < n; i++) {
 			L = BF_magic_w[0];
 			LR[1] = BF_magic_w[1];
 
@@ -889,12 +884,11 @@ int main(void)
 	col     = e_group_config.core_col;
 	corenum = row * e_group_config.group_cols + col;
 	
-	do
-	{		
+	do {		
 		while(buff.in.start[corenum] != 16);
 				
-		buff.in.start[corenum] = 0;
 		buff.out.core_done[corenum] = 0;
+		buff.in.start[corenum] = 0;
 		
 		BF_crypt();
 		

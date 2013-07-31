@@ -396,7 +396,7 @@ static int crypt_all(int *pcount, struct db_salt *salt)
 {
 	int count = *pcount;
 	
-	int i, j, k, n = 0;
+	int i, j, k = 0;
 	int core_start = 0;
 	int done[EPIPHANY_CORES] = {0};
 	inputs input;
@@ -413,8 +413,7 @@ static int crypt_all(int *pcount, struct db_salt *salt)
 	}
 	
 	core_start = 16;
-	for(i = 0; i < platform.rows*platform.cols; i++)
-	{
+	for(i = 0; i < platform.rows*platform.cols; i++) {
 		memcpy(&input.salt, &saved_salt.salt, sizeof(input.salt));
 		memcpy(&input.rounds, &saved_salt.rounds, sizeof(input.rounds));
 		memcpy(&input.init_key[i], &BF_init_key[i], sizeof(BF_key));
@@ -428,17 +427,9 @@ static int crypt_all(int *pcount, struct db_salt *salt)
 	
 	ERR(e_write(&emem, 0, 0, 0, &input, sizeof(inputs)), "Writing input data failed!\n");
 	
-	for(i = 0; i < platform.rows*platform.cols; i++)
-		while(out.core_done[i] != i + 1)
-			ERR(e_read(&emem, 0, 0, offsetof(shared_buffer, out.core_done[i]), &out.core_done[i], sizeof(out.core_done[i])), "Reading results failed!\n");
-	
-	if (count < platform.rows*platform.cols)
-		n = count;
-	else
-		n = platform.rows*platform.cols;
-	
-	for(i = 0; i < n; i++)
-	{
+	for(i = 0; i < platform.rows*platform.cols; i++) {
+		while(done[i] != i + 1)
+			ERR(e_read(&emem, 0, 0, offsetof(shared_buffer, out.core_done[i]), &done[i], sizeof(done[i])), "Reading results failed!\n");
 		ERR(e_read(&emem, 0, 0, offsetof(shared_buffer, out.result[i]), parallella_BF_out[i], sizeof(BF_binary)), "Reading results failed!\n");
 #ifdef interleave		
 		ERR(e_read(&emem, 0, 0, offsetof(shared_buffer, out.result[i + EPIPHANY_CORES]), parallella_BF_out[i + EPIPHANY_CORES], sizeof(BF_binary)), "Reading results failed!\n");
