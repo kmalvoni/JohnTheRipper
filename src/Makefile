@@ -266,7 +266,7 @@ linux-parallella:
 		JOHN_OBJS="$(JOHN_OBJS) $(PARALLELLA_OBJS) c3_fmt.o" \
 		CFLAGS="$(CFLAGS) -mfpu=neon -DHAVE_CRYPT -DHAVE_PARALLELLA" \
 		LDFLAGS="$(LDFLAGS) -L${ELIBS} -lcrypt -le-hal"
-	e-gcc -std=c99 -T ${ELDF} -O2 -mfp-mode=int parallella_e_bcrypt.c parallella_e_bcrypt.s -o ../run/parallella_e_bcrypt.elf -le-lib
+	e-gcc -std=c99 -T ${ELDF} -O2 -mfp-mode=int parallella_e_bcrypt.c parallella_e_bcrypt.S -o ../run/parallella_e_bcrypt.elf -le-lib
 	e-objcopy --srec-forceS3 --output-target srec ../run/parallella_e_bcrypt.elf ../run/parallella_e_bcrypt.srec
 
 linux-arm32le:
