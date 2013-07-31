@@ -57,16 +57,16 @@
 #define interleave
 
 #define PLAINTEXT_LENGTH		72
-#define SALT_SIZE				22+7
+#define SALT_SIZE			22+7
 #define EPIPHANY_CORES			16
 #ifdef interleave
-#define MAX_KEYS_PER_CRYPT		EPIPHANY_CORES*2
+#define MAX_KEYS_PER_CRYPT		(EPIPHANY_CORES*2)
 #else
 #define MAX_KEYS_PER_CRYPT		EPIPHANY_CORES
 #endif
 
 /* Number of Blowfish rounds, this is also hardcoded into a few places */
-#define BF_ROUNDS				16
+#define BF_ROUNDS			16
 
 #define assembly
 
