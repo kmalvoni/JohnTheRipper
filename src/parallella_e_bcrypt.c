@@ -51,6 +51,7 @@
  */
 
 #include <string.h>
+#include <stddef.h>
 
 #include "e_lib.h"
 
@@ -78,26 +79,19 @@ typedef BF_word BF_key[BF_ROUNDS + 2];
 typedef struct {
 	BF_word salt[4];
 	unsigned char rounds;
-	char subtype;
-} BF_salt;
-
-typedef struct
-{
-	BF_word salt[4];
-    unsigned char rounds;
+	unsigned char flags; /* bit 0 keys_changed, bit 1 salt_changed */
+        int start1[EPIPHANY_CORES];
 	BF_key init_key[MAX_KEYS_PER_CRYPT];
 	BF_key exp_key[MAX_KEYS_PER_CRYPT];
-	int start[EPIPHANY_CORES];
+	int start2[EPIPHANY_CORES];
 }inputs;
 
-typedef struct
-{
+typedef struct {
 	BF_binary result[MAX_KEYS_PER_CRYPT];
 	int core_done[EPIPHANY_CORES];
 }outputs;
 
-typedef struct 
-{
+typedef struct {
 	volatile inputs in;
 	outputs out;
 } shared_buffer;
@@ -105,6 +99,7 @@ typedef struct
 static shared_buffer buff SECTION("shared_dram");
 
 int corenum;
+BF_word salt[4];
 
 typedef union {
 	struct {
@@ -420,42 +415,42 @@ static const unsigned char BF_atoi64[0x60] = {
 }
 
 #define BF_2ROUND \
-		"and r44, %[L], %[c2]\n" \
-		"lsr r23, %[L], 0xe\n" \
-		"and r23, r23, %[c1]\n" \
-		"lsr r24, %[L], 0x16\n" \
-		"and r24, r24, %[c1]\n" \
-		"imadd r44, r44, %[c]\n" \
-		"ldr r23, [%[s1], +r23]\n" \
-		"ldr r24, [%[s0], +r24]\n" \
-		"lsr r22, %[L], 6\n" \
-		"and r22, r22, %[c1]\n" \
-		"iadd r23, r24, r23\n" \
-		"ldr r22, [%[s2], +r22]\n" \
-		"ldr r27, [r45], 0x1\n" \
-		"ldr r44, [%[s3], +r44]\n" \
-		"eor %[R], %[R], r27\n" \
-		"eor r23, r22, r23\n" \
-		"add r23, r23, r44\n" \
-		"eor %[R], %[R], r23\n" \
-		"and r44, %[R], %[c2]\n" \
-		"lsr r23, %[R], 0xe\n" \
-		"and r23, r23, %[c1]\n" \
-		"lsr r24, %[R], 0x16\n" \
-		"and r24, r24, %[c1]\n" \
-		"imadd r44, r44, %[c]\n" \
-		"ldr r23, [%[s1], +r23]\n" \
-		"ldr r24, [%[s0], +r24]\n" \
-		"lsr r22, %[R], 6\n" \
-		"and r22, r22, %[c1]\n" \
-		"iadd r23, r24, r23\n" \
-		"ldr r22, [%[s2], +r22]\n" \
-		"ldr r27, [r45], 0x1\n" \
-		"ldr r44, [%[s3], +r44]\n" \
-		"eor %[L], %[L], r27\n" \
-		"eor r23, r22, r23\n" \
-		"add r23, r23, r44\n" \
-		"eor %[L], %[L], r23\n"
+	"and r44, %[L], %[c2]\n" \
+	"lsr r23, %[L], 0xe\n" \
+	"and r23, r23, %[c1]\n" \
+	"lsr r24, %[L], 0x16\n" \
+	"and r24, r24, %[c1]\n" \
+	"imadd r44, r44, %[c]\n" \
+	"ldr r23, [%[s1], +r23]\n" \
+	"ldr r24, [%[s0], +r24]\n" \
+	"lsr r22, %[L], 6\n" \
+	"and r22, r22, %[c1]\n" \
+	"iadd r23, r24, r23\n" \
+	"ldr r22, [%[s2], +r22]\n" \
+	"ldr r27, [r45], 0x1\n" \
+	"ldr r44, [%[s3], +r44]\n" \
+	"eor %[R], %[R], r27\n" \
+	"eor r23, r22, r23\n" \
+	"add r23, r23, r44\n" \
+	"eor %[R], %[R], r23\n" \
+	"and r44, %[R], %[c2]\n" \
+	"lsr r23, %[R], 0xe\n" \
+	"and r23, r23, %[c1]\n" \
+	"lsr r24, %[R], 0x16\n" \
+	"and r24, r24, %[c1]\n" \
+	"imadd r44, r44, %[c]\n" \
+	"ldr r23, [%[s1], +r23]\n" \
+	"ldr r24, [%[s0], +r24]\n" \
+	"lsr r22, %[R], 6\n" \
+	"and r22, r22, %[c1]\n" \
+	"iadd r23, r24, r23\n" \
+	"ldr r22, [%[s2], +r22]\n" \
+	"ldr r27, [r45], 0x1\n" \
+	"ldr r44, [%[s3], +r44]\n" \
+	"eor %[L], %[L], r27\n" \
+	"eor r23, r22, r23\n" \
+	"add r23, r23, r44\n" \
+	"eor %[L], %[L], r23\n"
 
 /* Architectures with no complicated addressing modes supported */
 #define BF_INDEX(S, i) \
@@ -642,9 +637,7 @@ static void BF_encrypt2(BF_ctx *ctx0, BF_ctx *ctx1)
 }
 #endif
 
-static BF_word BF_encrypt(BF_ctx *ctx,
-    BF_word L, BF_word R,
-    BF_word *start, BF_word *end)
+static BF_word BF_encrypt(BF_ctx *ctx, BF_word L, BF_word R, BF_word *start, BF_word *end)
 {
 	BF_word tmp1, tmp2, tmp3, tmp4;
 	BF_word *ptr = start;
@@ -727,10 +720,7 @@ static void *BF_crypt(void)
 	typedef struct {
 		BF_ctx ctx;
 		BF_key expanded_key;
-		union {
-			BF_word salt[4];
-			BF_word output[2];
-		} binary;
+		BF_word output[2];
 	} data;
 
 #ifdef interleave
@@ -753,7 +743,7 @@ static void *BF_crypt(void)
 	
 	for(i = 0; i < n; i++) {
 		count = (BF_word)1 << buff.in.rounds;
-		memcpy(current[i].binary.salt, (BF_word *)buff.in.salt, sizeof(current[i].binary.salt));
+		memcpy(salt, (BF_word *)buff.in.salt, sizeof(salt));
 
 		memcpy(current[i].ctx.s.S, BF_init_state.s.S, sizeof(current[i].ctx.s.S));
 		
@@ -761,7 +751,7 @@ static void *BF_crypt(void)
 		BF_word *ptr = &current[i].ctx.PS[0];
 		do {
 			L = BF_encrypt(&current[i].ctx,
-			    L ^ current[i].binary.salt[0], R ^ current[i].binary.salt[1],
+			    L ^ salt[0], R ^ salt[1],
 			    ptr, ptr);
 			R = *(ptr + 1);
 			ptr += 2;
@@ -770,7 +760,7 @@ static void *BF_crypt(void)
 				break;
 
 			L = BF_encrypt(&current[i].ctx,
-			    L ^ current[i].binary.salt[2], R ^ current[i].binary.salt[3],
+			    L ^ salt[2], R ^ salt[3],
 			    ptr, ptr);
 			R = *(ptr + 1);
 			ptr += 2;
@@ -812,10 +802,10 @@ static void *BF_crypt(void)
 			BF_word tmp1, tmp2, tmp3, tmp4;
 			
 			for(i = 0; i < n; i++) {
-				tmp1 = current[i].binary.salt[0];
-				tmp2 = current[i].binary.salt[1];
-				tmp3 = current[i].binary.salt[2];
-				tmp4 = current[i].binary.salt[3];
+				tmp1 = salt[0];
+				tmp2 = salt[1];
+				tmp3 = salt[2];
+				tmp4 = salt[3];
 				current[i].ctx.s.P[0] ^= tmp1;
 				current[i].ctx.s.P[1] ^= tmp2;
 				current[i].ctx.s.P[2] ^= tmp3;
@@ -864,14 +854,14 @@ static void *BF_crypt(void)
 					&LR[0], &LR[0]);
 			} while (--count);
 
-			current[i].binary.output[0] = L;
-			current[i].binary.output[1] = LR[1];
+			current[i].output[0] = L;
+			current[i].output[1] = LR[1];
 		}
 	}
 
-	memcpy(buff.out.result[corenum], current[0].binary.output, sizeof(current[0].binary.output));
+	memcpy(buff.out.result[corenum], current[0].output, sizeof(current[0].output));
 #ifdef interleave
-	memcpy(buff.out.result[corenum + EPIPHANY_CORES], current[1].binary.output, sizeof(current[1].binary.output));
+	memcpy(buff.out.result[corenum + EPIPHANY_CORES], current[1].output, sizeof(current[1].output));
 #endif
 }
 
@@ -884,11 +874,14 @@ int main(void)
 	col     = e_group_config.core_col;
 	corenum = row * e_group_config.group_cols + col;
 	
-	do {		
-		while(buff.in.start[corenum] != 16);
+	do {	
+		while(buff.in.start1[corenum] != 16);
+		if(buff.in.flags == 0)
+			while(buff.in.start2[corenum] != 16);
 				
 		buff.out.core_done[corenum] = 0;
-		buff.in.start[corenum] = 0;
+		buff.in.start1[corenum] = 0;
+		buff.in.start2[corenum] = 0;
 		
 		BF_crypt();
 		

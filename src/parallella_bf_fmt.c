@@ -66,27 +66,25 @@ typedef struct {
 	BF_word salt[4];
 	unsigned char rounds;
 	char subtype;
-	int dummy_offset;
 } BF_salt;
 
-typedef struct
-{
+typedef struct {
 	BF_word salt[4];
-    unsigned char rounds;
-    int dummy_offset;
+	unsigned char rounds;
+	unsigned char flags; /* bit 0 keys_changed, bit 1 salt_changed */
+	int dummy_offset;
+        int start1[EPIPHANY_CORES];
 	BF_key init_key[MAX_KEYS_PER_CRYPT];
 	BF_key exp_key[MAX_KEYS_PER_CRYPT];
-	int start[EPIPHANY_CORES];
+	int start2[EPIPHANY_CORES];
 }inputs;
 
-typedef struct
-{
+typedef struct {
 	BF_binary result[MAX_KEYS_PER_CRYPT];
 	int core_done[EPIPHANY_CORES];
 }outputs;
 
-typedef struct 
-{
+typedef struct {
 	inputs in;
 	volatile outputs out;
 } shared_buffer;
@@ -146,6 +144,7 @@ static struct fmt_tests tests[] = {
 
 static char saved_key[MAX_KEYS_PER_CRYPT][PLAINTEXT_LENGTH + 1];
 static char keys_mode;
+static unsigned char flags;
 static int sign_extension_bug;
 static BF_salt saved_salt;
 static BF_key BF_exp_key[MAX_KEYS_PER_CRYPT];
@@ -156,11 +155,11 @@ static e_epiphany_t dev;
 static e_mem_t emem;
 
 static BF_key P_init = {
-		0x243f6a88, 0x85a308d3, 0x13198a2e, 0x03707344,
-		0xa4093822, 0x299f31d0, 0x082efa98, 0xec4e6c89,
-		0x452821e6, 0x38d01377, 0xbe5466cf, 0x34e90c6c,
-		0xc0ac29b7, 0xc97c50dd, 0x3f84d5b5, 0xb5470917,
-		0x9216d5d9, 0x8979fb1b
+	0x243f6a88, 0x85a308d3, 0x13198a2e, 0x03707344,
+	0xa4093822, 0x299f31d0, 0x082efa98, 0xec4e6c89,
+	0x452821e6, 0x38d01377, 0xbe5466cf, 0x34e90c6c,
+	0xc0ac29b7, 0xc97c50dd, 0x3f84d5b5, 0xb5470917,
+	0x9216d5d9, 0x8979fb1b
 };
 
 unsigned char parallella_BF_atoi64[0x80] = {
@@ -180,15 +179,10 @@ static void init(struct fmt_main *self)
 	sign_extension_bug = 0;
 	
 	ERR(e_init(NULL),"Init of Epiphany chip failed!\n");
-	
 	ERR(e_reset_system(), "Reset of Epiphany chip failed!\n");
-	
 	ERR(e_get_platform_info(&platform), "Get platform info failed!\n");
-	
 	ERR(e_alloc(&emem, _BufOffset, _BufSize), "Epiphany memory allocation failed!\n");
-
 	ERR(e_open(&dev, 0, 0, platform.rows, platform.cols), "e_open() failed!\n");
-	
 	ERR(e_load_group("parallella_e_bcrypt.srec", &dev, 0, 0, platform.rows, platform.cols, E_TRUE), "Load failed!\n");
 }
 
@@ -340,7 +334,7 @@ static int get_hash_6(int index)
 }
 
 static void set_salt(void *salt)
-{
+{	
 	memcpy(&saved_salt, salt, sizeof(saved_salt));
 }
 
@@ -365,7 +359,12 @@ static void set_key(char *key, int index)
 	char *ptr = key;
 	int i, j;
 	BF_word tmp;
-
+	
+	if (keys_mode != saved_salt.subtype) {
+		keys_mode = saved_salt.subtype;
+		sign_extension_bug = (keys_mode == 'x');
+	}
+		
 	for (i = 0; i < BF_ROUNDS + 2; i++) {
 		tmp = 0;
 		for (j = 0; j < 4; j++) {
@@ -382,6 +381,9 @@ static void set_key(char *key, int index)
 		BF_init_key[index][i] = P_init[i] ^ tmp;
 	}
 	
+	if(strncmp(key, saved_key[index], PLAINTEXT_LENGTH) != 0 || !key[0])
+		flags = 0;
+	
 	strnzcpy(saved_key[index], key, PLAINTEXT_LENGTH + 1);
 }
 
@@ -393,46 +395,51 @@ static char *get_key(int index)
 static int crypt_all(int *pcount, struct db_salt *salt)
 {
 	int count = *pcount;
-	
-	int i, j, k = 0;
+	int i = 0;
 	int core_start = 0;
 	int done[EPIPHANY_CORES] = {0};
 	inputs input;
 	outputs out;
-	struct timeval start, end;
+	size_t transfer_size;
 	
-	if (keys_mode != saved_salt.subtype) {
-		int i;
-
-		keys_mode = saved_salt.subtype;
-		sign_extension_bug = (keys_mode == 'x');
-		for (i = 0; i < count; i++)
-			set_key(saved_key[i], i);
-	}
+	memcpy(&input.flags, &flags, sizeof(flags));
 	
 	core_start = 16;
 	for(i = 0; i < platform.rows*platform.cols; i++) {
 		memcpy(&input.salt, &saved_salt.salt, sizeof(input.salt));
 		memcpy(&input.rounds, &saved_salt.rounds, sizeof(input.rounds));
-		memcpy(&input.init_key[i], &BF_init_key[i], sizeof(BF_key));
-		memcpy(&input.exp_key[i], &BF_exp_key[i], sizeof(BF_key));
+		if(flags == 0) {
+			memcpy(&input.init_key[i], &BF_init_key[i], sizeof(BF_key));
+			memcpy(&input.exp_key[i], &BF_exp_key[i], sizeof(BF_key));
 #ifdef interleave
-		memcpy(&input.init_key[i + EPIPHANY_CORES], &BF_init_key[i + EPIPHANY_CORES], sizeof(BF_key));
-		memcpy(&input.exp_key[i + EPIPHANY_CORES], &BF_exp_key[i + EPIPHANY_CORES], sizeof(BF_key));
+			memcpy(&input.init_key[i + EPIPHANY_CORES], &BF_init_key[i + EPIPHANY_CORES], sizeof(BF_key));
+			memcpy(&input.exp_key[i + EPIPHANY_CORES], &BF_exp_key[i + EPIPHANY_CORES], sizeof(BF_key));
 #endif
-		memcpy(&input.start[i], &core_start, sizeof(core_start));
+			memcpy(&input.start1[i], &core_start, sizeof(core_start));
+			memcpy(&input.start2[i], &core_start, sizeof(core_start));
+			transfer_size = sizeof(inputs);
+		} else {
+			memcpy(&input.start1[i], &core_start, sizeof(core_start));
+			transfer_size = sizeof(inputs) - sizeof(input.start2) - sizeof(input.init_key) - sizeof(input.exp_key);
+		}
 	}
 	
-	ERR(e_write(&emem, 0, 0, 0, &input, sizeof(inputs)), "Writing input data failed!\n");
-	
-	for(i = 0; i < platform.rows*platform.cols; i++) {
+	ERR(e_write(&emem, 0, 0, 0, &input, transfer_size), "Writing input data failed!\n");
+
+	for(i = 0; i < platform.rows*platform.cols; i++)
 		while(done[i] != i + 1)
 			ERR(e_read(&emem, 0, 0, offsetof(shared_buffer, out.core_done[i]), &done[i], sizeof(done[i])), "Reading results failed!\n");
-		ERR(e_read(&emem, 0, 0, offsetof(shared_buffer, out.result[i]), parallella_BF_out[i], sizeof(BF_binary)), "Reading results failed!\n");
+	
+	ERR(e_read(&emem, 0, 0, offsetof(shared_buffer, out.result), out.result, sizeof(out.result)), "Reading results failed!\n");
+	
+	for(i = 0; i < platform.rows*platform.cols; i++) {
+		memcpy(parallella_BF_out[i], out.result[i], sizeof(BF_binary));
 #ifdef interleave		
-		ERR(e_read(&emem, 0, 0, offsetof(shared_buffer, out.result[i + EPIPHANY_CORES]), parallella_BF_out[i + EPIPHANY_CORES], sizeof(BF_binary)), "Reading results failed!\n");
+		memcpy(parallella_BF_out[i + EPIPHANY_CORES], out.result[i + EPIPHANY_CORES], sizeof(BF_binary));
 #endif
 	}
+	
+	flags = 1;
 	
 	return count;
 }

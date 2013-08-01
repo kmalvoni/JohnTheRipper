@@ -118,7 +118,7 @@
 
 .macro BF2_2ROUND_B P1, P2, P3, P4
 	and tmpa1, L0, c1
-	lsr tmpa3, L0, 0xe 
+	lsr tmpa3, L0, 0xe
 	and tmpa3, tmpa3, c2
 	lsr tmpa4, L0, 0x16 
 	and tmpa4, tmpa4, c2
