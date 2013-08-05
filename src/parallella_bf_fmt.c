@@ -2,7 +2,8 @@
  * This file is part of John the Ripper password cracker,
  * Copyright (c) 2013 by Katja Malvoni <kmalvoni at gmail dot com>
  * It is hereby released to the general public under the following terms:
- * Redistribution and use in source and binary forms, with or without modification, are permitted.
+ * Redistribution and use in source and binary forms, 
+ * with or without modification, are permitted.
  */
 
 #include <stdio.h>
@@ -181,7 +182,8 @@ static void init(struct fmt_main *self)
 	ERR(e_get_platform_info(&platform), "Get platform info failed!\n");
 	ERR(e_alloc(&emem, _BufOffset, _BufSize), "Epiphany memory allocation failed!\n");
 	ERR(e_open(&dev, 0, 0, platform.rows, platform.cols), "e_open() failed!\n");
-	ERR(e_load_group("parallella_e_bcrypt.srec", &dev, 0, 0, platform.rows, platform.cols, E_TRUE), "Load failed!\n");
+	ERR(e_load_group("parallella_e_bcrypt.srec", &dev, 0, 0, 
+		platform.rows, platform.cols, E_TRUE), "Load failed!\n");
 }
 
 static void done(void)
@@ -409,8 +411,10 @@ static int crypt_all(int *pcount, struct db_salt *salt)
 			memcpy(&input.init_key[i], &BF_init_key[i], sizeof(BF_key));
 			memcpy(&input.exp_key[i], &BF_exp_key[i], sizeof(BF_key));
 #ifdef interleave
-			memcpy(&input.init_key[i + EPIPHANY_CORES], &BF_init_key[i + EPIPHANY_CORES], sizeof(BF_key));
-			memcpy(&input.exp_key[i + EPIPHANY_CORES], &BF_exp_key[i + EPIPHANY_CORES], sizeof(BF_key));
+			memcpy(&input.init_key[i + EPIPHANY_CORES], 
+				&BF_init_key[i + EPIPHANY_CORES], sizeof(BF_key));
+			memcpy(&input.exp_key[i + EPIPHANY_CORES], 
+				&BF_exp_key[i + EPIPHANY_CORES], sizeof(BF_key));
 #endif
 			memcpy(&input.start1[i], &core_start, sizeof(core_start));
 			memcpy(&input.start2[i], &core_start, sizeof(core_start));
@@ -426,8 +430,8 @@ static int crypt_all(int *pcount, struct db_salt *salt)
 
 	for(i = 0; i < platform.rows*platform.cols; i++)
 		while(done[i] != i + 1)
-			ERR(e_read(&emem, 0, 0, offsetof(shared_buffer, out.core_done[i]), &done[i], 
-			sizeof(done[i])), "Reading done flag failed!\n");
+			ERR(e_read(&emem, 0, 0, offsetof(shared_buffer, out.core_done[i]), 
+			&done[i], sizeof(done[i])), "Reading done flag failed!\n");
 	
 	ERR(e_read(&emem, 0, 0, offsetof(shared_buffer, out.result), out.result, 
 	sizeof(out.result)), "Reading results failed!\n");
@@ -435,7 +439,8 @@ static int crypt_all(int *pcount, struct db_salt *salt)
 	for(i = 0; i < platform.rows*platform.cols; i++) {
 		memcpy(parallella_BF_out[i], out.result[i], sizeof(BF_binary));
 #ifdef interleave		
-		memcpy(parallella_BF_out[i + EPIPHANY_CORES], out.result[i + EPIPHANY_CORES], sizeof(BF_binary));
+		memcpy(parallella_BF_out[i + EPIPHANY_CORES], 
+			out.result[i + EPIPHANY_CORES], sizeof(BF_binary));
 #endif
 	}
 	

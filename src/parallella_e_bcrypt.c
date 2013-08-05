@@ -673,7 +673,9 @@ static BF_word BF_encrypt(BF_ctx *ctx, BF_word L, BF_word R, BF_word *start, BF_
 		"mov %[L], r24\n"
 		"bgtu loop\n"
 		: [R] "+r" (R), [L] "+r" (L)
-		: [ctx] "r" (ctx), [ptr] "r" (ptr), [end] "r" (end), [s0] "r" (s0), [s1] "r" (s1), [s2] "r" (s2), [s3] "r" (s3), [c] "r" (c), [c1] "r" (const1), [c2] "r" (const2)
+		: [ctx] "r" (ctx), [ptr] "r" (ptr), [end] "r" (end), [s0] "r" (s0), \
+		[s1] "r" (s1), [s2] "r" (s2), [s3] "r" (s3), [c] "r" (c), \
+		[c1] "r" (const1), [c2] "r" (const2)
 		: "r22", "r23", "r24", "r27", "r44", "r45"
 	);
 #else
@@ -736,8 +738,10 @@ static void *BF_crypt(void)
 	memcpy(current[0].expanded_key, (BF_key*)buff.in.exp_key[corenum], sizeof(BF_key)); 
 	memcpy(current[0].ctx.s.P, (BF_key*)buff.in.init_key[corenum], sizeof(BF_key)); 
 #ifdef interleave
-	memcpy(current[1].expanded_key, (BF_key*)buff.in.exp_key[corenum + EPIPHANY_CORES], sizeof(BF_key)); 
-	memcpy(current[1].ctx.s.P, (BF_key*)buff.in.init_key[corenum + EPIPHANY_CORES], sizeof(BF_key)); 
+	memcpy(current[1].expanded_key, 
+		(BF_key*)buff.in.exp_key[corenum + EPIPHANY_CORES], sizeof(BF_key)); 
+	memcpy(current[1].ctx.s.P, 
+		(BF_key*)buff.in.init_key[corenum + EPIPHANY_CORES], sizeof(BF_key)); 
 #endif
 	
 	for(i = 0; i < n; i++) {
@@ -794,7 +798,8 @@ static void *BF_crypt(void)
 #ifdef interleave
 		BF_encrypt2(&current[0].ctx, &current[1].ctx);
 #else
-		BF_encrypt(&current[0].ctx, 0, 0, &current[0].ctx.PS[0], &current[0].ctx.PS[BF_ROUNDS + 2 + 4 * 0x100]);
+		BF_encrypt(&current[0].ctx, 0, 0, &current[0].ctx.PS[0], 
+			&current[0].ctx.PS[BF_ROUNDS + 2 + 4 * 0x100]);
 #endif
 		{
 			BF_word tmp1, tmp2, tmp3, tmp4;
@@ -828,7 +833,8 @@ static void *BF_crypt(void)
 #ifdef interleave
 		BF_encrypt2(&current[0].ctx, &current[1].ctx);
 #else
-		BF_encrypt(&current[0].ctx, 0, 0, &current[0].ctx.PS[0], &current[0].ctx.PS[BF_ROUNDS + 2 + 4 * 0x100]);
+		BF_encrypt(&current[0].ctx, 0, 0, &current[0].ctx.PS[0], 
+			&current[0].ctx.PS[BF_ROUNDS + 2 + 4 * 0x100]);
 #endif
 		
 	} while (--count);
@@ -859,7 +865,8 @@ static void *BF_crypt(void)
 
 	memcpy(buff.out.result[corenum], current[0].output, sizeof(current[0].output));
 #ifdef interleave
-	memcpy(buff.out.result[corenum + EPIPHANY_CORES], current[1].output, sizeof(current[1].output));
+	memcpy(buff.out.result[corenum + EPIPHANY_CORES], 
+		current[1].output, sizeof(current[1].output));
 #endif
 }
 
