@@ -51,7 +51,6 @@
  */
 
 #include <string.h>
-#include <stddef.h>
 
 #include "e_lib.h"
 
@@ -771,7 +770,6 @@ static void *BF_crypt(void)
 	BF_word *ptr;
 
 	do {
-		int done;
 		for(i = 0; i < n; i++) {
 			current[i].ctx.s.P[0] ^= current[i].expanded_key[0];
 			current[i].ctx.s.P[1] ^= current[i].expanded_key[1];

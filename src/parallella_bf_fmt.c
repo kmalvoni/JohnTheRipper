@@ -6,11 +6,9 @@
  */
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <stddef.h>
-#include <sys/time.h>
 
 #include "arch.h"
 #include "misc.h"
@@ -257,7 +255,6 @@ static int binary_hash_0(void *binary)
 	puts("get_binary_hash_0"); 
 	printf("%x\n", *(BF_word *)binary);
 #endif
-
 	return *(BF_word *)binary & 0xF;
 }
 
