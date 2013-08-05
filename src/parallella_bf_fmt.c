@@ -417,7 +417,8 @@ static int crypt_all(int *pcount, struct db_salt *salt)
 			transfer_size = sizeof(inputs);
 		} else {
 			memcpy(&input.start1[i], &core_start, sizeof(core_start));
-			transfer_size = sizeof(inputs) - sizeof(input.start2) - sizeof(input.init_key) - sizeof(input.exp_key);
+			transfer_size = sizeof(inputs) - sizeof(input.start2) - 
+					sizeof(input.init_key) - sizeof(input.exp_key);
 		}
 	}
 	
@@ -425,9 +426,11 @@ static int crypt_all(int *pcount, struct db_salt *salt)
 
 	for(i = 0; i < platform.rows*platform.cols; i++)
 		while(done[i] != i + 1)
-			ERR(e_read(&emem, 0, 0, offsetof(shared_buffer, out.core_done[i]), &done[i], sizeof(done[i])), "Reading results failed!\n");
+			ERR(e_read(&emem, 0, 0, offsetof(shared_buffer, out.core_done[i]), &done[i], 
+			sizeof(done[i])), "Reading done flag failed!\n");
 	
-	ERR(e_read(&emem, 0, 0, offsetof(shared_buffer, out.result), out.result, sizeof(out.result)), "Reading results failed!\n");
+	ERR(e_read(&emem, 0, 0, offsetof(shared_buffer, out.result), out.result, 
+	sizeof(out.result)), "Reading results failed!\n");
 	
 	for(i = 0; i < platform.rows*platform.cols; i++) {
 		memcpy(parallella_BF_out[i], out.result[i], sizeof(BF_binary));
