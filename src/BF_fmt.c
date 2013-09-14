@@ -17,6 +17,8 @@
 #include "common.h"
 #include "formats.h"
 
+#define FPGA
+
 #define FORMAT_LABEL			"bcrypt"
 #define FORMAT_NAME			""
 
@@ -31,8 +33,13 @@
 #define SALT_SIZE			sizeof(BF_salt)
 #define SALT_ALIGN			4
 
+#ifdef FPGA
+#define MIN_KEYS_PER_CRYPT		1
+#define MAX_KEYS_PER_CRYPT		1
+#else
 #define MIN_KEYS_PER_CRYPT		BF_Nmin
 #define MAX_KEYS_PER_CRYPT		BF_N
+#endif
 
 static struct fmt_tests tests[] = {
 	{"$2a$05$CCCCCCCCCCCCCCCCCCCCC.E5YPO9kmyuRGyh0XouQYb4YMJKvyOeW",
