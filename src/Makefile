@@ -47,7 +47,7 @@ JOHN_OBJS = \
 	DES_fmt.o DES_std.o DES_bs.o DES_bs_b.o \
 	BSDI_fmt.o \
 	MD5_fmt.o MD5_std.o \
-	BF_fmt.o BF_std.o \
+	BF_fmt.o BF_std.o BF_fpga.o \
 	AFS_fmt.o \
 	LM_fmt.o \
 	trip_fmt.o \
@@ -84,8 +84,7 @@ BENCH_OBJS = \
 	params.o path.o signals.o tty.o
 	
 PARALLELLA_OBJS = \
-	../run/parallella_bf_fmt.elf \
-	BF_fpga.o
+	../run/parallella_bf_fmt.elf
 
 PROJ = ../run/john ../run/unshadow ../run/unafs ../run/unique
 PROJ_DOS = ../run/john.bin ../run/john.com \
