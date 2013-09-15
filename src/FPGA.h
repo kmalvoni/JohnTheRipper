@@ -1,10 +1,11 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <fcntl.h>
-#include <sys/mman.h>
-#include <sys/time.h>
-#include <string.h>
-#include <unistd.h>
+/*
+ * This file is part of John the Ripper password cracker,
+ * Copyright (c) 2013 by Katja Malvoni <kmalvoni at gmail dot com>
+ * It is hereby released to the general public under the following terms:
+ * Redistribution and use in source and binary forms, 
+ * with or without modification, are permitted.
+ */
+
 #include "arch.h"
 #include "common.h"
 #include "BF_std.h"
@@ -77,4 +78,7 @@ typedef struct {
 	BF_word S[4*0x100];
 	BF_key exp_key;
 	BF_word salt[4];
+	BF_word rounds;
 } FPGA_data;
+
+extern void BF_fpga(BF_word *S, BF_key *P, BF_key *exp_key, BF_salt *salt, BF_word rounds);

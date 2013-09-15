@@ -84,7 +84,8 @@ BENCH_OBJS = \
 	params.o path.o signals.o tty.o
 	
 PARALLELLA_OBJS = \
-	../run/parallella_bf_fmt.elf
+	../run/parallella_bf_fmt.elf \
+	BF_fpga.o
 
 PROJ = ../run/john ../run/unshadow ../run/unafs ../run/unique
 PROJ_DOS = ../run/john.bin ../run/john.com \

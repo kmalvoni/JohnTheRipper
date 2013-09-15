@@ -137,6 +137,7 @@ parameter P_S2			= 32'b0000100001001100;
 parameter P_S3			= 32'b0000110001001100; 
 parameter P_EXP_KEY		= 32'b0001000001001100;
 parameter P_SALT		= 32'b0001000010010100;
+parameter COUNT_ADDR		= 32'd4260;
 // -- ADD USER PARAMETERS ABOVE THIS LINE ------------
 
 // -- DO NOT EDIT BELOW THIS LINE --------------------
@@ -377,9 +378,16 @@ input                                     bus2ip_mstwr_dst_dsc_n;
 		else if(slv_reg0 != 0) begin
 			if(state == INIT) begin
 				if(substate1 == SET) begin
-					count <= 'd32;
-					substate1 <= LOAD_EXP_KEY;
-					en <= 1;
+					if(mem_delay < 3'd2) begin
+						addr <= COUNT_ADDR;
+						mem_delay <= mem_delay + 1;
+					end
+					else begin
+						count <= 32'd1 << BRAM_RdData_A;
+						substate1 <= LOAD_EXP_KEY;
+						mem_delay <= 0;
+						en <= 1;
+					end
 				end
 				else if(substate1 == LOAD_EXP_KEY) begin
 					if(EXP_KEY_index < 5'd18) begin
