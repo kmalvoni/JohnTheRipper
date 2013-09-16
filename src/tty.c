@@ -58,7 +58,7 @@ void tty_init(int stdin_mode)
 
 	if ((fd = open("/dev/tty", O_RDONLY | O_NONBLOCK)) < 0) return;
 
-#ifndef __CYGWIN32__
+#if !defined(__CYGWIN32_) && !defined(HAVE_PARALLELLA)
 	if (tcgetpgrp(fd) != getpid()) {
 		close(fd); return;
 	}
