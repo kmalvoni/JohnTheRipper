@@ -17,8 +17,6 @@
 #include "common.h"
 #include "formats.h"
 
-#define FPGA
-
 #define FORMAT_LABEL			"bcrypt"
 #define FORMAT_NAME			""
 

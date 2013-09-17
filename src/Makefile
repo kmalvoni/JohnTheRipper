@@ -47,7 +47,7 @@ JOHN_OBJS = \
 	DES_fmt.o DES_std.o DES_bs.o DES_bs_b.o \
 	BSDI_fmt.o \
 	MD5_fmt.o MD5_std.o \
-	BF_fmt.o BF_std.o BF_fpga.o \
+	BF_fmt.o BF_std.o \
 	AFS_fmt.o \
 	LM_fmt.o \
 	trip_fmt.o \
@@ -84,7 +84,8 @@ BENCH_OBJS = \
 	params.o path.o signals.o tty.o
 	
 PARALLELLA_OBJS = \
-	../run/parallella_bf_fmt.elf
+	../run/parallella_bf_fmt.elf \
+	BF_fpga.o
 
 PROJ = ../run/john ../run/unshadow ../run/unafs ../run/unique
 PROJ_DOS = ../run/john.bin ../run/john.com \
@@ -264,7 +265,7 @@ linux-parallella:
 	$(LN) arm32le.h arch.h
 	$(MAKE) $(PROJ) \
 		JOHN_OBJS="$(JOHN_OBJS) $(PARALLELLA_OBJS) c3_fmt.o" \
-		CFLAGS="$(CFLAGS) -mfpu=neon -DHAVE_CRYPT -DHAVE_PARALLELLA" \
+		CFLAGS="$(CFLAGS) -mfpu=neon -DHAVE_CRYPT -DHAVE_PARALLELLA -DFPGA" \
 		LDFLAGS="$(LDFLAGS) -L${ELIBS} -lcrypt -le-hal"
 	e-gcc -std=c99 -T ${ELDF} -O2 -mfp-mode=int parallella_e_bcrypt.c parallella_e_bcrypt.S -o ../run/parallella_e_bcrypt.elf -le-lib
 	e-objcopy --srec-forceS3 --output-target srec ../run/parallella_e_bcrypt.elf ../run/parallella_e_bcrypt.srec

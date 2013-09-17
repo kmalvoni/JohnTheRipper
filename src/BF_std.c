@@ -34,8 +34,6 @@
 #include "common.h"
 #include "BF_std.h"
 
-#define FPGA
-
 #ifdef FPGA
 #include "FPGA.h"
 #undef BF_N
