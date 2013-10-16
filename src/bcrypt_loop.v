@@ -20,53 +20,56 @@ module bcrypt_loop
   done
 );
 
-parameter INIT			= 4'b0000;
-parameter P_XOR_EXP		= 4'b0001;
-parameter ENCRYPT_INIT		= 4'b0010;
-parameter FEISTEL		= 4'b0011;
-parameter STORE_L_R		= 4'b0100;
-parameter P_XOR_SALT		= 4'b0101;
-parameter LOOP			= 4'b0110;
-parameter DONE			= 4'b0111;
-parameter SET			= 4'b1000;
-parameter LOAD_P		= 4'b1001;	
-parameter LOAD_EXP_KEY		= 4'b1010;
-parameter LOAD_SALT		= 4'b1011;
-parameter LOAD_S		= 4'b1100;
-parameter UPDATE_L_R		= 4'b1101;
+parameter INIT				= 4'b0000;
+parameter P_XOR_EXP			= 4'b0001;
+parameter ENCRYPT_INIT			= 4'b0010;
+parameter FEISTEL			= 4'b0011;
+parameter STORE_L_R			= 4'b0100;
+parameter P_XOR_SALT			= 4'b0101;
+parameter LOOP				= 4'b0110;
+parameter DONE				= 4'b0111;
+parameter SET				= 4'b1000;
+parameter LOAD_P			= 4'b1001;	
+parameter LOAD_EXP_KEY			= 4'b1010;
+parameter LOAD_SALT			= 4'b1011;
+parameter LOAD_S			= 4'b1100;
+parameter UPDATE_L_R			= 4'b1101;
+parameter STORE_P			= 4'b1110;
+parameter STORE_S			= 4'b1111;
 	
-parameter P_ARRAY		= 32'b0000000000000100;
-parameter P_S0			= 32'b0000000001001100; 
-parameter P_S1			= 32'b0000010001001100; 
-parameter P_S2			= 32'b0000100001001100; 
-parameter P_S3			= 32'b0000110001001100; 
-parameter P_EXP_KEY		= 32'b0001000001001100;
-parameter P_SALT		= 32'b0001000010010100;
-parameter COUNT_ADDR		= 32'd4260;
+parameter P_ARRAY			= 32'b0000000000000100;
+parameter P_S0				= 32'b0000000001001100; 
+parameter P_S1				= 32'b0000010001001100; 
+parameter P_S2				= 32'b0000100001001100; 
+parameter P_S3				= 32'b0000110001001100; 
+parameter P_EXP_KEY			= 32'b0001000001001100;
+parameter P_SALT			= 32'b0001000010010100;
+parameter COUNT_ADDR			= 32'd4260;
 
-parameter C_MST_NATIVE_DATA_WIDTH        = 32;
-parameter C_LENGTH_WIDTH                 = 12;
-parameter C_MST_AWIDTH                   = 32;
-parameter C_NUM_REG                      = 6;
-parameter C_SLV_DWIDTH                   = 32;
+parameter C_MST_NATIVE_DATA_WIDTH      = 32;
+parameter C_LENGTH_WIDTH               = 12;
+parameter C_MST_AWIDTH                 = 32;
+parameter C_NUM_REG                    = 6;
+parameter C_SLV_DWIDTH                 = 32;
 
-input				     clk;
-output                               BRAM_Rst_A;
-output                               BRAM_Clk_A;
-output                               BRAM_En_A;
-output     [C_SLV_DWIDTH/8 - 1 : 0]  BRAM_WE_A;
-output     [C_MST_AWIDTH - 1 : 0]    BRAM_Addr_A;
-output     [C_SLV_DWIDTH - 1 : 0]    BRAM_WrData_A;
-input      [C_SLV_DWIDTH - 1 : 0]    BRAM_RdData_A;
-input      [C_SLV_DWIDTH-1 : 0]      slv_reg0;
-output     [C_SLV_DWIDTH-1 : 0]      done;
+input				    	clk;
+output                              	BRAM_Rst_A;
+output                               	BRAM_Clk_A;
+output                               	BRAM_En_A;
+output     [C_SLV_DWIDTH/8 - 1 : 0]  	BRAM_WE_A;
+output     [C_MST_AWIDTH - 1 : 0]    	BRAM_Addr_A;
+output     [C_SLV_DWIDTH - 1 : 0]    	BRAM_WrData_A;
+input      [C_SLV_DWIDTH - 1 : 0]    	BRAM_RdData_A;
+input      [C_SLV_DWIDTH-1 : 0]      	slv_reg0;
+output     [C_SLV_DWIDTH-1 : 0]      	done;
 
 integer i = 0;
   
 reg [C_SLV_DWIDTH-1 : 0] done_reg;
-reg [6:0] P_index = 0;
-reg [6:0] EXP_KEY_index = 0;
-reg [4:0] SALT_index = 0;
+reg [4:0] P_index = 0;
+reg [10:0] S_index = 0;
+reg [4:0] EXP_KEY_index = 0;
+reg [2:0] SALT_index = 0;
 reg [2:0] TMP_index = 0;
 reg [4:0] ROUND_index = 0;
 reg [31:0] ptr = 0;
@@ -80,15 +83,31 @@ reg [31:0] R = 0;
 reg [3:0] state = 0;
 reg [3:0] substate1 = 0;
 reg [3:0] substate2 = 0;
+reg [3:0] substate3 = 0;
 reg [31:0] P [17:0];
 reg [31:0] exp_key [17:0];
 reg [31:0] salt [3:0];
 reg [31:0] tmp [3:0];
 		
 reg en;
+reg wea;
+reg web;
 reg [3:0] we;
 reg [31:0] addr;
+reg [9:0] addra;
+reg [9:0] addrb;
 reg [31:0] din;
+reg [31:0] dina;
+reg [31:0] dinb;
+wire [31:0] douta;
+wire [31:0] doutb;
+wire ckla, clkb;
+
+ram mem(clka, wea, addra, dina, douta, clkb, web, addrb, dinb, doutb);
+//blk_mem_gen_v7_3 mem (clka, wea, addra, dina, douta, clkb, web, addrb, dinb, doutb);
+
+assign clka = clk;
+assign clkb = clk;
 
 assign BRAM_Clk_A = clk;
 assign BRAM_En_A = 1'b1;
@@ -102,6 +121,8 @@ always @ (posedge clk)
 begin
 	if(slv_reg0 == 0) begin
 		we <= 4'b0000;
+		wea <= 0;
+		web <= 0;
 		en <= 0;
 		count <= 0;
 		state <= INIT;
@@ -172,103 +193,91 @@ begin
 				end
 				else begin
 					P_index <= 5'd0;
+					S_index <= 'd0;
 					mem_delay <= 3'd0;
-					state <=  P_XOR_EXP;
-					we <= 4'b1111;
+					substate1 <=  LOAD_S;
+				end
+			end
+			else if(substate1 == LOAD_S) begin
+				if(S_index < 'd1024) begin
+					if(mem_delay < 3'd2) begin
+						wea <= 0;
+						addr <= P_S0 + S_index * 4;
+						mem_delay <= mem_delay + 3'd1;
+					end
+					else begin
+						wea <= 1;
+						addra <= S_index;
+						dina <= BRAM_RdData_A;
+						S_index <= S_index + 'd1;
+						mem_delay <= 3'd0;
+					end
+				end
+				else begin
+					wea <= 0;
+					S_index <= 'd0;
+					mem_delay <= 3'd0;
+					state <= P_XOR_EXP;
 				end
 			end
 		end
 		else if(state == P_XOR_EXP) begin
 			if(P_index < 5'd18) begin
-				we <= 4'b1111;
-				addr <= P_ARRAY + P_index * 'd4;
-				din <= P[P_index] ^ exp_key[P_index];;
-				P_index <= P_index + 5'd1;
 				P[P_index] <= P[P_index] ^ exp_key[P_index];
+				P[P_index + 'd1] <= P[P_index + 'd1] ^ exp_key[P_index + 'd1];
+				P_index <= P_index + 5'd2;
 			end
 			else begin
 				P_index <= 5'd0;
 				L <= 0;
 				R <= 0;
 				state <= ENCRYPT_INIT;
-				we <= 4'b0000;
-				ptr <= 1;
+				ptr <= 0;
 			end
 		end
 		else if(state == ENCRYPT_INIT) begin
-			if(P_index < 5'd18 && ptr < 5'd20) begin
-				if(mem_delay < 3'd2) begin
-					we <= 4'b0000;
-					addr <= P_ARRAY + P_index * 4;
-					mem_delay <= mem_delay + 3'd1;
-				end
-				else begin
-					P[P_index] <= BRAM_RdData_A;
-					P_index <= P_index + 5'd1;
-					mem_delay <= 0;
-				end
-			end
-			else begin
-				P_index <= 5'd0;
-				mem_delay <= 3'd0;
-				L <= L ^ P[0];
-				state <= FEISTEL;
-				substate2 <= LOAD_S;
-			end
+			wea <= 0;
+			web <= 0;
+			mem_delay <= 3'd0;
+			L <= L ^ P[0];
+			state <= FEISTEL;
+			substate2 <= LOAD_S;
+			TMP_index <= 3'd3;
 		end
 		else if(state == FEISTEL) begin
 			if(ROUND_index < 16) begin
 				if(substate2 == LOAD_S) begin
 					if(TMP_index == 'd3) begin
 						if(mem_delay < 3'd2) begin
-							we <= 4'b0000;
-							addr <= P_S0 + L[31:24] * 'd4;
+							wea <= 0;
+							web <= 0;
+							addra <= L[31:24];
+							addrb <= 32'h100 + L[23:16];
 							mem_delay <= mem_delay + 3'd1;
 						end
 						else begin
-							tmp[TMP_index] <= BRAM_RdData_A;
-							TMP_index <= TMP_index - 2'd1;
-							mem_delay <= 3'd0;
-						end
-					 end
-					 else if(TMP_index == 'd2) begin
-						if(mem_delay < 3'd2) begin
-							we <= 4'b0000;
-							addr <= P_S1 + L[23:16] * 'd4;
-							mem_delay <= mem_delay + 3'd1;
-						end
-						else begin
-							tmp[TMP_index] <= BRAM_RdData_A;
-							TMP_index <= TMP_index - 2'd1;
+							tmp[TMP_index] <= douta;
+							tmp[TMP_index - 'd1] <= doutb;
+							TMP_index <= TMP_index - 2'd2;
 							mem_delay <= 3'd0;
 						end
 					end
 					else if(TMP_index == 'd1) begin
 						if(mem_delay < 3'd2) begin
-							we <= 4'b0000;
-							addr <= P_S2 + L[15:8] * 'd4;
+							web <= 0;
+							wea <= 0;
+							addra <= 32'h200 + L[15:8];
+							addrb <= 32'h300 + L[7:0];
 							mem_delay <= mem_delay + 3'd1;
 						end
 						else begin
-							tmp[TMP_index] <= BRAM_RdData_A;
-							TMP_index <= TMP_index - 2'd1;
-							tmp[2] <= tmp[2] + tmp[3];
-							mem_delay <= 3'd0;
-						end
-					end
-					else if(TMP_index == 'd0) begin
-						if(mem_delay < 3'd2) begin
-							we <= 4'b0000;
-							addr <= P_S3 + L[7:0] * 'd4;
-							mem_delay <= mem_delay + 3'd1;
-						end
-						else begin
-							tmp[TMP_index] <= BRAM_RdData_A;
-							TMP_index <= 2'd3;
-							mem_delay <= 3'd0;
-							tmp[2] <= tmp[2] ^ tmp[1];
+							tmp[TMP_index] <= douta;
+							tmp[TMP_index - 'd1] <= doutb;
+							TMP_index <= 'd3;
+							tmp[2] <= (tmp[2] + tmp[3]) ^ douta;
 							R <= R ^ P[ROUND_index + 1];
 							substate2 <= UPDATE_L_R;
+							mem_delay <= 3'd0;
 						end
 					end
 				end
@@ -287,65 +296,102 @@ begin
 			end
 		end
 		else if(state == STORE_L_R) begin
-			if(ptr < 'd1043) begin
-				if(tmp_cnt == 0) begin
-					we <= 4'b1111;
-					addr <= ptr * 32'd4;
-					din <= L;
-					ptr <= ptr + 32'd1;
-					tmp_cnt <= tmp_cnt + 1'd1;
-				end
-				else if(tmp_cnt == 1) begin
-					we <= 4'b1111;
-					addr <= ptr * 32'd4;
-					din <= R;
-					ptr <= ptr + 32'd1;
-					tmp_cnt <= 1'b0;
-					state <= ENCRYPT_INIT;
-				end
+			if(ptr < 'd18) begin
+				P[ptr] <= L;
+				P[ptr + 'd1] <= R;
+				ptr <= ptr + 'd2;
+				state <= ENCRYPT_INIT;
+			end
+			else if(ptr >= 'd18 && ptr < 'd1042) begin
+				wea <= 1;
+				web <= 1;
+				addra <= ptr - 'd18;
+				dina <= L;
+				addrb <= ptr - 'd17;
+				dinb <= R;
+				ptr <= ptr + 'd2;
+				state <= ENCRYPT_INIT;
 			end
 			else begin
 				if(first_or_second == 0) begin
-					ptr <= 1;
+					ptr <= 0;
 					first_or_second <= 'b1;
 					state <= P_XOR_SALT;
-					we <= 4'b0000;
+					wea <= 0;
+					web <= 0;
 				end
 				else if (first_or_second == 1) begin
 					first_or_second <= 'b0;
 					state <= LOOP;
-					we <= 4'b0000;
-					ptr <= 1;
+					wea <= 0;
+					web <= 0;
+					ptr <= 0;
 				end
 			end
-		end				
+		end			
 		else if(state == P_XOR_SALT) begin
 			if(P_index < 'd18) begin
-				we <= 4'b1111;
-				addr <= P_ARRAY + P_index * 'd4;
-				din <= P[P_index] ^ salt[P_index%4];
-				P_index <= P_index + 5'd1;
 				P[P_index] <= P[P_index] ^ salt[P_index%4];
+				P[P_index + 'd1] <= P[P_index + 'd1] ^ salt[(P_index + 'd1)%4];
+				P_index <= P_index + 5'd2;
 			end
 			else begin
 				P_index <= 5'd0;
 				L <= 0;
 				R <= 0;
-				we <= 4'b0000;
 				state <= ENCRYPT_INIT;
 			end
 		end
 		else if(state == LOOP) begin
 			if(count > 1) begin
-				count <= count - 31'd1;
+				count <= count - 32'd1;
 				state <= P_XOR_EXP;
 			end
 			else begin
 				state <= DONE;
+				substate3 <= STORE_P;
+				P_index <= 0;
 			end
 		end
 		else if(state == DONE) begin
-			done_reg <= 32'hFF;
+			if(substate3 == STORE_P) begin
+				if(P_index < 'd18) begin
+					we <= 4'b1111;
+					addr <= P_ARRAY + P_index * 'd4;
+					din <= P[P_index];
+					P_index <= P_index + 'd1;
+				end
+				else begin
+					P_index <= 0;
+					we <= 4'b0000;
+					S_index <= 0;
+					substate3 <= STORE_S;
+				end
+			end
+			else if(substate3 == STORE_S) begin
+				if(S_index < 'd1024) begin
+					if(mem_delay < 3'd2) begin
+						we <= 4'b0000;
+						wea <= 0;
+						addra <= S_index;
+						mem_delay <= mem_delay + 'd1;
+					end
+					else begin
+						we <= 4'b1111;
+						addr <= P_S0 + S_index * 'd4;
+						din <= douta;
+						mem_delay <= 0;
+						S_index <= S_index + 'd1;
+					end
+				end
+				else begin
+					we <= 4'b0000;
+					substate3 <= DONE;
+				end
+			end
+			else if(substate3 == DONE) begin
+				done_reg <= 32'hFF;
+			end
 		end	
 	end
 end
