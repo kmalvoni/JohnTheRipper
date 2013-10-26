@@ -685,7 +685,7 @@ void BF_std_crypt(BF_salt *salt, int n)
 		
 #ifdef FPGA
 		index = 0;
-		for_each_ti {
+		for_each_ti() {
 			memcpy(src INDEX.S, BF_current INDEX.S[0], sizeof(src INDEX.S));
 			memcpy(src INDEX.P, &BF_current INDEX.P, sizeof(src INDEX.P));
 			memcpy(src INDEX.exp_key, &BF_exp_key INDEX, sizeof(src INDEX.exp_key));
