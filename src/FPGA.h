@@ -59,16 +59,14 @@
 #define XAXICDMA_SR_ERR_ALL_MASK      	0x00000770  /**< All errors */
 /*@}*/
 
-#define MAP_SIZE 			8192UL
-#define MAP_MASK 			(MAP_SIZE - 1)
+#define MAP_SIZE 			65536UL
+#define BCRYPT				0x6B000000
+#define CDMA_ADDR			0x40200000
+#define BRAM_DMA_ADDR			0x40000000
+#define BUFFER_BYTESIZE			65536	// Length of the buffers for DMA transfer
 
-#define SIMPLE_IP			0x40000000
-#define CDMA_ADDR			0x40002000
-#define BRAM_DMA_ADDR			0x40004000
 #define HIGH_OCM			0xFFFC0000
-
-#define BUFFER_BYTESIZE			8192	// Length of the buffers for DMA transfer
-
+#define MAP_MASK 			(MAP_SIZE - 1)
 #define BF_ROUNDS			16
 
 typedef BF_word BF_key[BF_ROUNDS + 2];
@@ -81,4 +79,4 @@ typedef struct {
 	BF_word rounds;
 } FPGA_data;
 
-extern void BF_fpga(BF_word *S, BF_key *P, BF_key *exp_key, BF_salt *salt, BF_word rounds);
+extern void BF_fpga(FPGA_data *src);

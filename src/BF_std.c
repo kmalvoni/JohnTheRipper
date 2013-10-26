@@ -29,6 +29,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 #include "arch.h"
 #include "common.h"
@@ -36,10 +37,6 @@
 
 #ifdef FPGA
 #include "FPGA.h"
-#undef BF_N
-#define BF_N				1
-#undef BF_mt
-#define BF_mt				1
 #endif
 
 BF_binary BF_out[BF_N];
@@ -643,42 +640,73 @@ void BF_std_crypt(BF_salt *salt, int n)
 		int index;
 #endif
 
+#ifdef FPGA
+#if BF_N > 1
+		FPGA_data src[BF_N];
+#else
+		FPGA_data src;
+#endif
+		BF_word rounds;
+#endif
+
 		for_each_ti() {
 			int i;
 
-			memcpy(BF_current INDEX2.S,
-			    BF_init_state.S, sizeof(BF_current INDEX2.S));
-			memcpy(BF_current INDEX2.P,
-			    BF_init_key INDEX, sizeof(BF_current INDEX2.P));
+			memcpy(BF_current INDEX.S,
+			    BF_init_state.S, sizeof(BF_current INDEX.S));
+			memcpy(BF_current INDEX.P,
+			    BF_init_key INDEX, sizeof(BF_current INDEX.P));
 
 			L0 = R0 = 0;
 			for (i = 0; i < BF_ROUNDS + 2; i += 2) {
 				L0 ^= salt->salt[i & 2];
 				R0 ^= salt->salt[(i & 2) + 1];
-				BF_ENCRYPT(BF_current INDEX2, L0, R0);
-				BF_current INDEX2.P[i] = L0;
-				BF_current INDEX2.P[i + 1] = R0;
+				BF_ENCRYPT(BF_current INDEX, L0, R0);
+				BF_current INDEX.P[i] = L0;
+				BF_current INDEX.P[i + 1] = R0;
 			}
 
-			ptr = BF_current INDEX2.S[0];
+			ptr = BF_current INDEX.S[0];
 			do {
 				ptr += 4;
 				L0 ^= salt->salt[(BF_ROUNDS + 2) & 3];
 				R0 ^= salt->salt[(BF_ROUNDS + 3) & 3];
-				BF_ENCRYPT(BF_current INDEX2, L0, R0);
+				BF_ENCRYPT(BF_current INDEX, L0, R0);
 				*(ptr - 4) = L0;
 				*(ptr - 3) = R0;
 
 				L0 ^= salt->salt[(BF_ROUNDS + 4) & 3];
 				R0 ^= salt->salt[(BF_ROUNDS + 5) & 3];
-				BF_ENCRYPT(BF_current INDEX2, L0, R0);
+				BF_ENCRYPT(BF_current INDEX, L0, R0);
 				*(ptr - 2) = L0;
 				*(ptr - 1) = R0;
-			} while (ptr < &BF_current INDEX2.S[3][0xFF]);
+			} while (ptr < &BF_current INDEX.S[3][0xFF]);
 		}
-
+		
 #ifdef FPGA
-		BF_fpga(BF_current INDEX2.S[0], &BF_current INDEX2.P, &BF_exp_key INDEX2, salt, salt->rounds);
+		index = 0;
+		for_each_ti {
+			memcpy(src INDEX.S, BF_current INDEX.S[0], sizeof(src INDEX.S));
+			memcpy(src INDEX.P, &BF_current INDEX.P, sizeof(src INDEX.P));
+			memcpy(src INDEX.exp_key, &BF_exp_key INDEX, sizeof(src INDEX.exp_key));
+			memcpy(src INDEX.salt, salt, sizeof(src INDEX.salt));
+			rounds = (BF_word)salt->rounds;
+			memcpy(&src INDEX.rounds, &rounds, sizeof(BF_word));
+		}
+#endif
+
+#ifdef FPGA	
+#if BF_N > 1
+		BF_fpga(src);
+		index = 0;
+#else
+		BF_fpga(&src);
+#endif
+		
+		for_each_ti() {
+			memcpy(BF_current INDEX.S[0], src INDEX.S, sizeof(src INDEX.S));
+			memcpy(&BF_current INDEX.P, src INDEX.P, sizeof(src INDEX.P));
+		}
 #else
 
 		count = 1 << salt->rounds;

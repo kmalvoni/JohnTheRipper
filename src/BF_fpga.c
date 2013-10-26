@@ -18,7 +18,7 @@
 #include "BF_std.h"
 #include "FPGA.h"
 
-void BF_fpga(BF_word *S, BF_key *P, BF_key *exp_key, BF_salt *salt, BF_word rounds)
+void BF_fpga(FPGA_data *src)
 {	
 	int memfd;
 	void *mapped_base, *mapped_dev_base;
@@ -30,26 +30,19 @@ void BF_fpga(BF_word *S, BF_key *P, BF_key *exp_key, BF_salt *salt, BF_word roun
 
 	int memfd_2;
 	void *mapped_base_2, *mapped_dev_base_2;
-	off_t dev_base_2 = SIMPLE_IP;
+	off_t dev_base_2 = BCRYPT;
 
 	unsigned int TimeOut = 5;
 	unsigned int ResetMask;
 	unsigned int RegValue;
-	FPGA_data src, dest;
 	struct timeval start, end;
-
-	memcpy(src.S, S, sizeof(src.S));
-	memcpy(src.P, P, sizeof(src.P));
-	memcpy(src.exp_key, exp_key, sizeof(src.exp_key));
-	memcpy(src.salt, &salt->salt, sizeof(src.salt));
-	memcpy(&src.rounds, &rounds, sizeof(BF_word));
-
+	
 	memfd_2 = open("/dev/mem", O_RDWR | O_SYNC);
 	if (memfd_2 == -1) {
 		printf("Can't open /dev/mem.\n");
 		exit(0);
 	}
-
+	
 	mapped_base_2 = mmap(0, MAP_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, memfd_2, dev_base_2 & ~MAP_MASK);
 	if (mapped_base_2 == (void *) -1) {
 		printf("Can't map the memory to user space.\n");
@@ -67,12 +60,12 @@ void BF_fpga(BF_word *S, BF_key *P, BF_key *exp_key, BF_salt *salt, BF_word roun
 	}
 
 	close(memfd_2);
-
 	memfd_1 = open("/dev/mem", O_RDWR | O_SYNC);
 	if (memfd_1 == -1) {
 		printf("Can't open /dev/mem.\n");
 		exit(0);
 	}
+	
 	mapped_base_1 = mmap(0, MAP_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, memfd_1, dev_base_1 & ~MAP_MASK);
 	if (mapped_base_1 == (void *) -1) {
 		printf("Can't map the memory to user space.\n");
@@ -80,8 +73,8 @@ void BF_fpga(BF_word *S, BF_key *P, BF_key *exp_key, BF_salt *salt, BF_word roun
 	}
 
 	mapped_dev_base_1 = mapped_base_1 + (dev_base_1 & MAP_MASK);
-
-	memcpy(mapped_dev_base_1, &src, sizeof(src));
+	
+	memcpy(mapped_dev_base_1, src, sizeof(FPGA_data) * BF_N);
 
 	if (munmap(mapped_base_1, MAP_SIZE) == -1) {
 		printf("Can't unmap memory from user space.\n");
@@ -135,8 +128,8 @@ void BF_fpga(BF_word *S, BF_key *P, BF_key *exp_key, BF_salt *salt, BF_word roun
 	//Set the Source Address
 	*((volatile unsigned long *) (mapped_dev_base + XAXICDMA_SRCADDR_OFFSET)) = (unsigned long)HIGH_OCM;
 	//Set the Destination Address
-	*((volatile unsigned long *) (mapped_dev_base + XAXICDMA_DSTADDR_OFFSET)) = (unsigned long)(BRAM_DMA_ADDR + 4);
-	RegValue = (unsigned long)sizeof(FPGA_data);
+	*((volatile unsigned long *) (mapped_dev_base + XAXICDMA_DSTADDR_OFFSET)) = (unsigned long)BRAM_DMA_ADDR;
+	RegValue = (unsigned long)(sizeof(FPGA_data) * BF_N);
 	// write Byte to Transfer
 	*((volatile unsigned long *) (mapped_dev_base + XAXICDMA_BTT_OFFSET)) = (unsigned long)RegValue;
 	/*======================================================================================
@@ -149,15 +142,15 @@ void BF_fpga(BF_word *S, BF_key *P, BF_key *exp_key, BF_salt *salt, BF_word roun
 	gettimeofday(&end, NULL);
 //	printf("Transfer from high OCM to bram: %f us.\n", (double)(end.tv_usec - start.tv_usec));
 
-//	if((RegValue & XAXICDMA_XR_IRQ_IOC_MASK)) {
-//		printf("Transfer Completed\n");
-//	}
-//	if((RegValue & XAXICDMA_XR_IRQ_DELAY_MASK)) {
-//		printf("IRQ Delay Interrupt\n");
-//	}
-//	if((RegValue & XAXICDMA_XR_IRQ_ERROR_MASK)) {
-//		printf(" Transfer Error Interrupt\n");
-//	}
+	//if((RegValue & XAXICDMA_XR_IRQ_IOC_MASK)) {
+		//printf("Transfer Completed\n");
+	//}
+	//if((RegValue & XAXICDMA_XR_IRQ_DELAY_MASK)) {
+		//printf("IRQ Delay Interrupt\n");
+	//}
+	//if((RegValue & XAXICDMA_XR_IRQ_ERROR_MASK)) {
+		//printf(" Transfer Error Interrupt\n");
+	//}
 
 	if (munmap(mapped_base, MAP_SIZE) == -1) {
 			printf("Can't unmap memory from user space.\n");
@@ -178,11 +171,11 @@ void BF_fpga(BF_word *S, BF_key *P, BF_key *exp_key, BF_salt *salt, BF_word roun
 		exit(0);
 	}
 	mapped_dev_base_2 = mapped_base_2 + (dev_base_2 & MAP_MASK);
-
+	
 	/*Start computation*/
 	RegValue = 10;
 	*((volatile unsigned long *)mapped_dev_base_2 + 0x0) = RegValue;
-
+	
 	/*Wait for done*/
 	do {
 		RegValue = *((volatile unsigned int*)(mapped_dev_base_2 + 4));
@@ -241,10 +234,10 @@ void BF_fpga(BF_word *S, BF_key *P, BF_key *exp_key, BF_salt *salt, BF_word roun
 		*((volatile unsigned long *) (mapped_dev_base + XAXICDMA_CR_OFFSET)) = (unsigned long)RegValue;
 	}
 	//Set the Source Address
-	*((volatile unsigned long *) (mapped_dev_base + XAXICDMA_SRCADDR_OFFSET)) = (unsigned long)(BRAM_DMA_ADDR + 4);
+	*((volatile unsigned long *) (mapped_dev_base + XAXICDMA_SRCADDR_OFFSET)) = (unsigned long)BRAM_DMA_ADDR;
 	//Set the Destination Address
 	*((volatile unsigned long *) (mapped_dev_base + XAXICDMA_DSTADDR_OFFSET)) = (unsigned long)HIGH_OCM;
-	RegValue = (unsigned long)sizeof(FPGA_data);
+	RegValue = (unsigned long)(sizeof(FPGA_data) * BF_N);
 	// write Byte to Transfer
 	*((volatile unsigned long *) (mapped_dev_base + XAXICDMA_BTT_OFFSET)) = (unsigned long)RegValue;
 	/*======================================================================================
@@ -257,15 +250,15 @@ void BF_fpga(BF_word *S, BF_key *P, BF_key *exp_key, BF_salt *salt, BF_word roun
 	gettimeofday(&end, NULL);
 //	printf("Transfer from bram to high OCM: %f us.\n", (double)(end.tv_usec - start.tv_usec));
 
-//	if((RegValue & XAXICDMA_XR_IRQ_IOC_MASK)) {
-//			printf("Transfer Completed\n");
-//	}
-//	if((RegValue & XAXICDMA_XR_IRQ_DELAY_MASK)) {
-//		printf("IRQ Delay Interrupt\n");
-//	}
-//	if((RegValue & XAXICDMA_XR_IRQ_ERROR_MASK)) {
-//		printf(" Transfer Error Interrupt\n");
-//	}
+	//if((RegValue & XAXICDMA_XR_IRQ_IOC_MASK)) {
+			//printf("Transfer Completed\n");
+	//}
+	//if((RegValue & XAXICDMA_XR_IRQ_DELAY_MASK)) {
+		//printf("IRQ Delay Interrupt\n");
+	//}
+	//if((RegValue & XAXICDMA_XR_IRQ_ERROR_MASK)) {
+		//printf(" Transfer Error Interrupt\n");
+	//}
 
 	if (munmap(mapped_base, MAP_SIZE) == -1) {
 			printf("Can't unmap memory from user space.\n");
@@ -287,16 +280,11 @@ void BF_fpga(BF_word *S, BF_key *P, BF_key *exp_key, BF_salt *salt, BF_word roun
 	}
 
 	mapped_dev_base_1 = mapped_base_1 + (dev_base_1 & MAP_MASK);
-	memcpy(&dest, mapped_dev_base_1, sizeof(dest));
+	memcpy(src, mapped_dev_base_1, sizeof(FPGA_data) * BF_N);
 	if (munmap(mapped_base_1, MAP_SIZE) == -1) {
 		printf("Can't unmap memory from user space.\n");
 		exit(0);
 	}
 
 	close(memfd_1);
-
-	memcpy(S, dest.S, sizeof(src.S));
-	memcpy(P, dest.P, sizeof(src.P));
-	memcpy(exp_key, dest.exp_key, sizeof(src.exp_key));
-	memcpy(&salt->salt, dest.salt, sizeof(src.salt));
 }

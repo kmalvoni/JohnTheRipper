@@ -34,20 +34,21 @@ typedef struct {
  */
 typedef BF_word BF_binary[6];
 
-#if BF_X2
-#define BF_Nmin				2
-#else
-#define BF_Nmin				1
-#endif
+//~ #if BF_X2
+//~ #define BF_Nmin				2
+//~ #else
+//~ #define BF_Nmin				1
+//~ #endif
 
-#if defined(_OPENMP) && !BF_ASM
-#define BF_cpt				3
-#define BF_mt				192
-#define BF_N				(BF_Nmin * BF_mt)
-#else
+//~ #if defined(_OPENMP) && !BF_ASM
+//~ #define BF_cpt				3
+//~ #define BF_mt				192
+//~ #define BF_N				(BF_Nmin * BF_mt)
+//~ #else
 #define BF_mt				1
-#define BF_N				BF_Nmin
-#endif
+#define BF_N				14
+#define BF_Nmin				14
+//~ #endif
 
 /*
  * BF_std_crypt() output buffer.
