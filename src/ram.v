@@ -6,7 +6,7 @@
  * with or without modification, are permitted.
  */
 
-(* RAM_STYLE="{BLOCK}" *)
+(* RAM_STYLE="{AUTO | BLOCK |  BLOCK_POWER1 | BLOCK_POWER2}" *)
 module ram #(parameter DATA_WIDTH=32, parameter ADDR_WIDTH=10)
 (
 	input clka,
