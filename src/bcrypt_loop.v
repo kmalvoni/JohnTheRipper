@@ -64,7 +64,6 @@ reg [4:0] P_index = 0;
 reg [10:0] S_index = 0;
 reg [4:0] EXP_KEY_index = 0;
 reg [2:0] SALT_index = 0;
-reg [2:0] TMP_index = 0;
 reg [4:0] ROUND_index = 0;
 reg [31:0] ptr = 0;
 reg tmp_cnt = 0;
@@ -81,7 +80,6 @@ reg [3:0] substate3 = 0;
 reg [31:0] P [17:0];
 reg [31:0] exp_key [17:0];
 reg [31:0] salt [3:0];
-reg [31:0] tmp [3:0];
 
 reg [31:0] p_addr;
 reg [31:0] s0_addr;  
@@ -157,7 +155,6 @@ begin
 					s0_addr <= P_S0 + OFFSET * core_index;
 					exp_key_addr <= P_EXP_KEY + OFFSET * core_index;
 					salt_addr <= P_SALT + OFFSET * core_index;
-					count_addr <= COUNT + OFFSET * core_index;
 				end
 			end
 			else if(substate1 == LOAD_EXP_KEY) begin
@@ -265,39 +262,50 @@ begin
 				ptr <= 0;
 			end
 		end
-		else if(state == ENCRYPT_INIT) begin
+	else if(state == ENCRYPT_INIT) begin
 			mem_delay <= 3'd0;
 			L <= L ^ P[0];
 			state <= FEISTEL;
 			substate2 <= LOAD_S;
-			TMP_index <= 3'd3;
+			wea_1 <= 0;
+			web_1 <= 0;
+			wea_2 <= 0;
+			web_2 <= 0;
+			addra_1[9:8] <= 'b00;
+			addrb_1[9:8] <= 'b01;
+			addra_2[9:8] <= 'b10;
+			addrb_2[9:8] <= 'b11;
 		end
 		else if(state == FEISTEL) begin
 			if(ROUND_index < 16) begin
-				if(substate2 == LOAD_S) begin
-					if(mem_delay < 3'd2) begin
-						wea_1 <= 0;
-						web_1 <= 0;
-						wea_2 <= 0;
-						web_2 <= 0;
-						addra_1 <= L[31:24];
-						addrb_1 <= 32'h100 + L[23:16];
-						addra_2 <= 32'h200 + L[15:8];
-						addrb_2 <= 32'h300 + L[7:0];
-						mem_delay <= mem_delay + 3'd1;
-					end
-					else begin
-						L <= (R ^ P[ROUND_index + 1]) ^ (((douta_1 + doutb_1) ^ douta_2) + doutb_2);
+				if(mem_delay == 0) begin
+					if (ROUND_index > 0) begin
+						L <= (R ^ P[ROUND_index]) ^ (((douta_1 + doutb_1) ^ douta_2) + doutb_2);
 						R <= L;
-						ROUND_index <= ROUND_index + 5'd1;
-						substate2 <= LOAD_S;
 						mem_delay <= 0;
 					end
+					if (ROUND_index == 0) begin
+						addra_1 <= L[31:24];
+						addrb_1 <= 10'h100 + L[23:16];
+						addra_2 <= 10'h200 + L[15:8];
+						addrb_2 <= 10'h300 + L[7:0];
+					end
+					else begin
+						addra_1[7:0] <= (((R ^ P[ROUND_index]) ^ (((douta_1 + doutb_1) ^ douta_2) + doutb_2))&32'hFF000000)>>24;
+						addrb_1[7:0] <= (((R ^ P[ROUND_index]) ^ (((douta_1 + doutb_1) ^ douta_2) + doutb_2))&32'h00FF0000)>>16;
+						addra_2[7:0] <= (((R ^ P[ROUND_index]) ^ (((douta_1 + doutb_1) ^ douta_2) + doutb_2))&32'h0000FF00)>>8;
+						addrb_2[7:0] <= ((R ^ P[ROUND_index]) ^ (((douta_1 + doutb_1) ^ douta_2) + doutb_2))&32'h000000FF;
+					end
+					mem_delay <= mem_delay + 3'd1;
+				end
+				else if (mem_delay == 1) begin
+					ROUND_index <= ROUND_index + 5'd1;
+					mem_delay <= 0;
 				end
 			end
 			else begin
-				R <= L;
-				L <= R ^ P[17];
+				R <= (R ^ P[16]) ^ (((douta_1 + doutb_1) ^ douta_2) + doutb_2);
+				L <= L ^ P[17];
 				ROUND_index <= 5'd0;
 				state <= STORE_L_R;
 			end

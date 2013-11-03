@@ -58,6 +58,7 @@ reg [C_SLV_DWIDTH-1 : 0] start_reg [NUM_OF_CORES - 1 : 0];
   wire [3 : 0] WE_A [NUM_OF_CORES - 1 : 0];
   wire [C_MST_AWIDTH - 1 : 0] Addr_A [NUM_OF_CORES - 1 : 0];
   wire [C_SLV_DWIDTH - 1 : 0] WrData_A [NUM_OF_CORES - 1 : 0];
+  wire [31:0] count;
   
   assign start[0] = start_reg[0];
   assign start[1] = start_reg[1];
