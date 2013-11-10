@@ -58,7 +58,7 @@
 
 #define PLAINTEXT_LENGTH		72
 #define SALT_SIZE			22+7
-#define EPIPHANY_CORES			16
+#define EPIPHANY_CORES			64
 #ifdef interleave
 #define MAX_KEYS_PER_CRYPT		(EPIPHANY_CORES*2)
 #else
@@ -79,10 +79,10 @@ typedef struct {
 	BF_word salt[4];
 	unsigned char rounds;
 	unsigned char flags; /* bit 0 keys_changed, bit 1 salt_changed */
-        int start1[EPIPHANY_CORES];
-	BF_key init_key[MAX_KEYS_PER_CRYPT];
-	BF_key exp_key[MAX_KEYS_PER_CRYPT];
-	int start2[EPIPHANY_CORES];
+        int start1;
+	BF_key init_key[MAX_KEYS_PER_CRYPT/EPIPHANY_CORES];
+	BF_key exp_key[MAX_KEYS_PER_CRYPT/EPIPHANY_CORES];
+	int start2;
 }inputs;
 
 typedef struct {
@@ -90,15 +90,11 @@ typedef struct {
 	int core_done[EPIPHANY_CORES];
 }outputs;
 
-typedef struct {
-	volatile inputs in;
-	outputs out;
-} shared_buffer;
-
-static shared_buffer buff SECTION("shared_dram");
+static outputs out SECTION("shared_dram");
 
 int corenum;
 BF_word salt[4];
+volatile inputs *in = (volatile inputs *)(0x4900);
 
 typedef union {
 	struct {
@@ -735,18 +731,18 @@ static void *BF_crypt(void)
 	BF_word count;
 	int i = 0;
 	
-	memcpy(current[0].expanded_key, (BF_key*)buff.in.exp_key[corenum], sizeof(BF_key)); 
-	memcpy(current[0].ctx.s.P, (BF_key*)buff.in.init_key[corenum], sizeof(BF_key)); 
+	memcpy(current[0].expanded_key, (BF_key *)in->exp_key[0], sizeof(BF_key));
+	memcpy(current[0].ctx.s.P, (BF_key *)in->init_key[0], sizeof(BF_key));
 #ifdef interleave
 	memcpy(current[1].expanded_key, 
-		(BF_key*)buff.in.exp_key[corenum + EPIPHANY_CORES], sizeof(BF_key)); 
+		(BF_key *)in->exp_key[1], sizeof(BF_key)); 
 	memcpy(current[1].ctx.s.P, 
-		(BF_key*)buff.in.init_key[corenum + EPIPHANY_CORES], sizeof(BF_key)); 
+		(BF_key *)in->init_key[1], sizeof(BF_key));
 #endif
 	
 	for(i = 0; i < n; i++) {
-		count = (BF_word)1 << buff.in.rounds;
-		memcpy(salt, (BF_word *)buff.in.salt, sizeof(salt));
+		count = (BF_word)1 << in->rounds;
+		memcpy(salt, (BF_word *)in->salt, sizeof(salt));
 
 		memcpy(current[i].ctx.s.S, BF_init_state.s.S, sizeof(current[i].ctx.s.S));
 		
@@ -863,9 +859,9 @@ static void *BF_crypt(void)
 		}
 	}
 
-	memcpy(buff.out.result[corenum], current[0].output, sizeof(current[0].output));
+	memcpy(out.result[corenum], current[0].output, sizeof(current[0].output));
 #ifdef interleave
-	memcpy(buff.out.result[corenum + EPIPHANY_CORES], 
+	memcpy(out.result[corenum + EPIPHANY_CORES], 
 		current[1].output, sizeof(current[1].output));
 #endif
 }
@@ -879,20 +875,21 @@ int main(void)
 	col     = e_group_config.core_col;
 	corenum = row * e_group_config.group_cols + col;
 	
+	in->start1 = 0;
+	in->start2 = 0;
+	
 	do {	
-		while(buff.in.start1[corenum] != 16);
-		if(buff.in.flags == 0)
-			while(buff.in.start2[corenum] != 16);
+		while((in->start1) != 16);
+		if(in->flags == 0)
+			while(in->start2 != 16);
 				
-		buff.out.core_done[corenum] = 0;
-		buff.in.start1[corenum] = 0;
-		buff.in.start2[corenum] = 0;
+		out.core_done[corenum] = 0;
+		in->start1 = 0;
+		in->start2 = 0;
 		
 		BF_crypt();
 		
-		buff.out.core_done[corenum] = corenum + 1;
-		
-			
+		out.core_done[corenum] = corenum + 1;
 	}while(1);
 
 	return 0;

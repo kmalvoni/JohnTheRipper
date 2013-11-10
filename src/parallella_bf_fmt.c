@@ -36,7 +36,7 @@
 #define SALT_SIZE			22+7
 #define SALT_ALIGN			4
 
-#define EPIPHANY_CORES			16
+#define EPIPHANY_CORES			64
 #ifdef interleave
 #define MIN_KEYS_PER_CRYPT		(EPIPHANY_CORES*2)
 #define MAX_KEYS_PER_CRYPT		(EPIPHANY_CORES*2)
@@ -71,11 +71,10 @@ typedef struct {
 	BF_word salt[4];
 	unsigned char rounds;
 	unsigned char flags; /* bit 0 keys_changed, bit 1 salt_changed */
-	int dummy_offset;
-        int start1[EPIPHANY_CORES];
-	BF_key init_key[MAX_KEYS_PER_CRYPT];
-	BF_key exp_key[MAX_KEYS_PER_CRYPT];
-	int start2[EPIPHANY_CORES];
+        int start1;
+	BF_key init_key[MAX_KEYS_PER_CRYPT/EPIPHANY_CORES];
+	BF_key exp_key[MAX_KEYS_PER_CRYPT/EPIPHANY_CORES];
+	int start2;
 }inputs;
 
 typedef struct {
@@ -83,14 +82,14 @@ typedef struct {
 	int core_done[EPIPHANY_CORES];
 }outputs;
 
-typedef struct {
-	inputs in;
-	volatile outputs out;
-} shared_buffer;
+//~ typedef struct {
+	//~ inputs in;
+	//~ volatile outputs out;
+//~ } shared_buffer;
 
 static BF_binary parallella_BF_out[MAX_KEYS_PER_CRYPT];
 
-#define _BufSize (sizeof(shared_buffer))
+#define _BufSize (sizeof(outputs))
 #define _BufOffset (0x01000000)
 
 static struct fmt_tests tests[] = {
@@ -394,46 +393,48 @@ static char *get_key(int index)
 static int crypt_all(int *pcount, struct db_salt *salt)
 {
 	int count = *pcount;
-	int i = 0;
+	int i, j = 0;
 	int core_start = 0;
 	int done[EPIPHANY_CORES] = {0};
-	inputs input;
+	inputs input[EPIPHANY_CORES];
 	outputs out;
 	size_t transfer_size;
-	
-	memcpy(&input.flags, &flags, sizeof(flags));
-	
-	core_start = 16;
-	for(i = 0; i < platform.rows*platform.cols; i++) {
-		memcpy(&input.salt, &saved_salt.salt, sizeof(input.salt));
-		memcpy(&input.rounds, &saved_salt.rounds, sizeof(input.rounds));
-		if(flags == 0) {
-			memcpy(&input.init_key[i], &BF_init_key[i], sizeof(BF_key));
-			memcpy(&input.exp_key[i], &BF_exp_key[i], sizeof(BF_key));
+        
+        core_start = 16;
+        for(i = 0; i < platform.rows*platform.cols; i++) {
+		memcpy(&input[i].flags, &flags, sizeof(flags));
+                memcpy(&input[i].salt, &saved_salt.salt, sizeof(input[i].salt));
+                memcpy(&input[i].rounds, &saved_salt.rounds, sizeof(input[i].rounds));
+                if(flags == 0) {
+                        memcpy(&input[i].init_key[0], &BF_init_key[i], sizeof(BF_key));
+                        memcpy(&input[i].exp_key[0], &BF_exp_key[i], sizeof(BF_key));
 #ifdef interleave
-			memcpy(&input.init_key[i + EPIPHANY_CORES], 
-				&BF_init_key[i + EPIPHANY_CORES], sizeof(BF_key));
-			memcpy(&input.exp_key[i + EPIPHANY_CORES], 
-				&BF_exp_key[i + EPIPHANY_CORES], sizeof(BF_key));
+                        memcpy(&input[i].init_key[1],
+                                &BF_init_key[i + EPIPHANY_CORES], sizeof(BF_key));
+                        memcpy(&input[i].exp_key[1],
+                                &BF_exp_key[i + EPIPHANY_CORES], sizeof(BF_key));
 #endif
-			memcpy(&input.start1[i], &core_start, sizeof(core_start));
-			memcpy(&input.start2[i], &core_start, sizeof(core_start));
-			transfer_size = sizeof(inputs);
-		} else {
-			memcpy(&input.start1[i], &core_start, sizeof(core_start));
-			transfer_size = sizeof(inputs) - sizeof(input.start2) - 
-					sizeof(input.init_key) - sizeof(input.exp_key);
-		}
-	}
+                        memcpy(&input[i].start1, &core_start, sizeof(core_start));
+                        memcpy(&input[i].start2, &core_start, sizeof(core_start));
+                        transfer_size = sizeof(inputs);
+                } else {
+                        memcpy(&input[i].start1, &core_start, sizeof(core_start));
+                        transfer_size = sizeof(inputs) - sizeof(input[i].start2) -
+                                        sizeof(input[i].init_key) - sizeof(input[i].exp_key);
+                }
+        }
 	
-	ERR(e_write(&emem, 0, 0, 0, &input, transfer_size), "Writing input data failed!\n");
+	for(i = 0; i < platform.rows; i++)
+		for(j = 0; j < platform.cols; j++)
+			ERR(e_write(&dev, i, j, 0x4900, &input[i*platform.cols + j], 
+				sizeof(input[i*platform.cols + j])), "Writing input data failed!\n");
 
 	for(i = 0; i < platform.rows*platform.cols; i++)
-		while(done[i] != i + 1)
-			ERR(e_read(&emem, 0, 0, offsetof(shared_buffer, out.core_done[i]), 
-				&done[i], sizeof(done[i])), "Reading done flag failed!\n");
-	
-	ERR(e_read(&emem, 0, 0, offsetof(shared_buffer, out.result), out.result, 
+                while(done[i] != i + 1)
+                        ERR(e_read(&emem, 0, 0, offsetof(outputs, core_done[i]),
+                                &done[i], sizeof(done[i])), "Reading done flag failed!\n");
+                                
+	ERR(e_read(&emem, 0, 0, offsetof(outputs, result), out.result, 
 		sizeof(out.result)), "Reading results failed!\n");
 	
 	for(i = 0; i < platform.rows*platform.cols; i++) {
@@ -441,7 +442,7 @@ static int crypt_all(int *pcount, struct db_salt *salt)
 #ifdef interleave		
 		memcpy(parallella_BF_out[i + EPIPHANY_CORES], 
 			out.result[i + EPIPHANY_CORES], sizeof(BF_binary));
-#endif
+#endif		
 	}
 	
 	flags = 1;
