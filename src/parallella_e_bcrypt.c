@@ -78,7 +78,7 @@ typedef BF_word BF_key[BF_ROUNDS + 2];
 typedef struct {
 	BF_word salt[4];
 	unsigned char rounds;
-	unsigned char flags; /* bit 0 keys_changed, bit 1 salt_changed */
+	unsigned char flags;
         int start1;
 	BF_key init_key[MAX_KEYS_PER_CRYPT/EPIPHANY_CORES];
 	BF_key exp_key[MAX_KEYS_PER_CRYPT/EPIPHANY_CORES];

@@ -70,7 +70,7 @@ typedef struct {
 typedef struct {
 	BF_word salt[4];
 	unsigned char rounds;
-	unsigned char flags; /* bit 0 keys_changed, bit 1 salt_changed */
+	unsigned char flags;
         int start1;
 	BF_key init_key[MAX_KEYS_PER_CRYPT/EPIPHANY_CORES];
 	BF_key exp_key[MAX_KEYS_PER_CRYPT/EPIPHANY_CORES];
@@ -81,11 +81,6 @@ typedef struct {
 	BF_binary result[MAX_KEYS_PER_CRYPT];
 	int core_done[EPIPHANY_CORES];
 }outputs;
-
-//~ typedef struct {
-	//~ inputs in;
-	//~ volatile outputs out;
-//~ } shared_buffer;
 
 static BF_binary parallella_BF_out[MAX_KEYS_PER_CRYPT];
 
@@ -427,7 +422,7 @@ static int crypt_all(int *pcount, struct db_salt *salt)
 	for(i = 0; i < platform.rows; i++)
 		for(j = 0; j < platform.cols; j++)
 			ERR(e_write(&dev, i, j, 0x4900, &input[i*platform.cols + j], 
-				sizeof(input[i*platform.cols + j])), "Writing input data failed!\n");
+				transfer_size), "Writing input data failed!\n");
 
 	for(i = 0; i < platform.rows*platform.cols; i++)
                 while(done[i] != i + 1)
