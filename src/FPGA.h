@@ -1,6 +1,6 @@
 /*
  * This file is part of John the Ripper password cracker,
- * Copyright (c) 2013 by Katja Malvoni <kmalvoni at gmail dot com>
+ * Copyright (c) 2014 by Katja Malvoni <kmalvoni at gmail dot com>
  * It is hereby released to the general public under the following terms:
  * Redistribution and use in source and binary forms, 
  * with or without modification, are permitted.
@@ -12,15 +12,14 @@
 
 #define MAP_SIZE 			4096UL
 #define MAP_SIZE_S 			(4096UL * BF_N)
-#define MAP_SIZE_OTHERS 		(256UL * BF_N)
+#define MAP_SIZE_OTHERS 	(256UL * BF_N)
 #define BCRYPT				0x40410000
 #define BCRYPT_S			0x40000000
-#define BCRYPT_OTHERS			0x40400000
+#define BCRYPT_OTHERS		0x40400000
 
-#define HIGH_OCM			0xFFFC0000
 #define MAP_MASK 			(MAP_SIZE - 1)
 #define MAP_MASK_S 			(MAP_SIZE_S - 1)
-#define MAP_MASK_OTHERS 		(MAP_SIZE_OTHERS - 1)
+#define MAP_MASK_OTHERS 	(MAP_SIZE_OTHERS - 1)
 #define BF_ROUNDS			16
 
 typedef BF_word BF_key[BF_ROUNDS + 2];

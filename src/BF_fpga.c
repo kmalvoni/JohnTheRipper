@@ -1,6 +1,6 @@
 /*
  * This file is part of John the Ripper password cracker,
- * Copyright (c) 2013 by Katja Malvoni <kmalvoni at gmail dot com>
+ * Copyright (c) 2014 by Katja Malvoni <kmalvoni at gmail dot com>
  * It is hereby released to the general public under the following terms:
  * Redistribution and use in source and binary forms, 
  * with or without modification, are permitted.
