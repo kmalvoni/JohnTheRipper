@@ -39,11 +39,11 @@ typedef enum {
 } direction;
 
 typedef struct {
-	other_data data[BF_N];
-	BF_word S[BF_N][4*0x100];
+	other_data data[BF_N * OVERLAP_FACTOR];
+	BF_word S[BF_N * OVERLAP_FACTOR][4*0x100];
 } FPGA_data;
 
 void FPGA_reset();
 void FPGA_start();
 void FPGA_done();
-void FPGA_transfer_data(FPGA_data *src, direction dir);
+void FPGA_transfer_data(FPGA_data *src, direction dir, unsigned int offset);

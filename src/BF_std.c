@@ -39,7 +39,7 @@
 #include "FPGA.h"
 #endif
 
-BF_binary BF_out[BF_N];
+BF_binary BF_out[BF_N * OVERLAP_FACTOR];
 
 /* Number of Blowfish rounds, this is also hardcoded into a few places */
 #define BF_ROUNDS			16
@@ -52,7 +52,7 @@ struct BF_ctx {
 };
 
 #if BF_N > 1
-#define INDICES				[BF_N]
+#define INDICES				[BF_N * OVERLAP_FACTOR]
 #define INDEX				[index]
 #define INDEX0				[index]
 #define for_each_index() \
@@ -643,6 +643,7 @@ void BF_std_crypt(BF_salt *salt, int n)
 #ifdef FPGA
 		FPGA_data src;
 		BF_word rounds;
+		unsigned int overlap;
 #endif
 
 		for_each_ti() {
@@ -680,6 +681,7 @@ void BF_std_crypt(BF_salt *salt, int n)
 		}
 		
 #ifdef FPGA
+		overlap = (n-1)/BF_N + 1;
 		for_each_ti() {
 			memcpy(src.S INDEX, BF_current INDEX.S[0], sizeof(src.S INDEX));
 			memcpy(src.data INDEX.P, &BF_current INDEX.P, sizeof(src.data INDEX.P));
@@ -688,14 +690,85 @@ void BF_std_crypt(BF_salt *salt, int n)
 			rounds = (BF_word)salt->rounds;
 			memcpy(&src.data INDEX.rounds, &rounds, sizeof(BF_word));
 		}
-		
+
 		FPGA_reset();
-		FPGA_transfer_data(&src, HOST_TO_FPGA);
+		FPGA_transfer_data(&src, HOST_TO_FPGA, 0);
 		FPGA_start();
-		FPGA_done();
-		FPGA_transfer_data(&src, FPGA_TO_HOST);
 		
-		for_each_ti() {
+		for(overlap = 1; overlap < (n-1)/BF_N + 1; overlap++) {
+			for (index = BF_N * overlap; index < BF_N * (overlap + 1); index++) {
+				int i;
+
+				memcpy(BF_current INDEX.S,
+				    BF_init_state.S, sizeof(BF_current INDEX.S));
+				memcpy(BF_current INDEX.P,
+				    BF_init_key INDEX, sizeof(BF_current INDEX.P));
+
+				L0 = R0 = 0;
+				for (i = 0; i < BF_ROUNDS + 2; i += 2) {
+					L0 ^= salt->salt[i & 2];
+					R0 ^= salt->salt[(i & 2) + 1];
+					BF_ENCRYPT(BF_current INDEX, L0, R0);
+					BF_current INDEX.P[i] = L0;
+					BF_current INDEX.P[i + 1] = R0;
+				}
+
+				ptr = BF_current INDEX.S[0];
+				do {
+					ptr += 4;
+					L0 ^= salt->salt[(BF_ROUNDS + 2) & 3];
+					R0 ^= salt->salt[(BF_ROUNDS + 3) & 3];
+					BF_ENCRYPT(BF_current INDEX, L0, R0);
+					*(ptr - 4) = L0;
+					*(ptr - 3) = R0;
+
+					L0 ^= salt->salt[(BF_ROUNDS + 4) & 3];
+					R0 ^= salt->salt[(BF_ROUNDS + 5) & 3];
+					BF_ENCRYPT(BF_current INDEX, L0, R0);
+					*(ptr - 2) = L0;
+					*(ptr - 1) = R0;
+				} while (ptr < &BF_current INDEX.S[3][0xFF]);
+			}
+			
+			for (index = BF_N * overlap; index < BF_N * (overlap + 1); index++) {
+				memcpy(src.S INDEX, BF_current INDEX.S[0], sizeof(src.S INDEX));
+				memcpy(src.data INDEX.P, &BF_current INDEX.P, sizeof(src.data INDEX.P));
+				memcpy(src.data INDEX.exp_key, &BF_exp_key INDEX, sizeof(src.data INDEX.exp_key));
+				memcpy(src.data INDEX.salt, salt, sizeof(src.data INDEX.salt));
+				rounds = (BF_word)salt->rounds;
+				memcpy(&src.data INDEX.rounds, &rounds, sizeof(BF_word));
+			}
+			
+			FPGA_done();
+			FPGA_transfer_data(&src, FPGA_TO_HOST, BF_N * (overlap - 1));
+			
+			FPGA_reset();
+			FPGA_transfer_data(&src, HOST_TO_FPGA, BF_N * overlap);
+			FPGA_start();
+			
+			for (index = BF_N * (overlap - 1); index < BF_N * overlap; index++) {
+				memcpy(BF_current INDEX.S[0], src.S INDEX, sizeof(src.S INDEX));
+				memcpy(&BF_current INDEX.P, src.data INDEX.P, sizeof(src.data INDEX.P));
+			}
+			
+			for (index = BF_N * (overlap - 1); index < BF_N * overlap; index++) {
+				L0 = BF_magic_w[0];
+				R0 = BF_magic_w[1];
+
+				count = 64;
+				do {
+					BF_ENCRYPT(BF_current INDEX, L0, R0);
+				} while (--count);
+
+				BF_out INDEX0[0] = L0;
+				BF_out INDEX0[1] = R0;
+			}
+		}
+		
+		FPGA_done();
+		FPGA_transfer_data(&src, FPGA_TO_HOST, BF_N * (overlap - 1));
+		
+		for (index = BF_N * (overlap - 1); index < BF_N * overlap; index++) {
 			memcpy(BF_current INDEX.S[0], src.S INDEX, sizeof(src.S INDEX));
 			memcpy(&BF_current INDEX.P, src.data INDEX.P, sizeof(src.data INDEX.P));
 		}
@@ -756,7 +829,11 @@ void BF_std_crypt(BF_salt *salt, int n)
 #endif
 
 #if BF_mt == 1
+#ifdef FPGA
+		for (index = BF_N * (overlap - 1); index < BF_N * overlap; index++) {
+#else
 		for_each_ti() {
+#endif
 			L0 = BF_magic_w[0];
 			R0 = BF_magic_w[1];
 
