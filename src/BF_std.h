@@ -46,8 +46,8 @@ typedef BF_word BF_binary[6];
 //~ #define BF_N				(BF_Nmin * BF_mt)
 //~ #else
 #define BF_mt				1
-#define BF_N				14
-#define BF_Nmin				14
+#define BF_N				60
+#define BF_Nmin				60
 //~ #endif
 
 /*

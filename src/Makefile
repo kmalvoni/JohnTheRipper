@@ -47,7 +47,7 @@ JOHN_OBJS = \
 	DES_fmt.o DES_std.o DES_bs.o DES_bs_b.o \
 	BSDI_fmt.o \
 	MD5_fmt.o MD5_std.o \
-	BF_fmt.o BF_std.o \
+	BF_fmt.o BF_std.o BF_fpga.o\
 	AFS_fmt.o \
 	LM_fmt.o \
 	trip_fmt.o \
@@ -85,7 +85,6 @@ BENCH_OBJS = \
 	
 PARALLELLA_OBJS = \
 	../run/parallella_bf_fmt.elf \
-	BF_fpga.o
 
 PROJ = ../run/john ../run/unshadow ../run/unafs ../run/unique
 PROJ_DOS = ../run/john.bin ../run/john.com \
@@ -258,7 +257,7 @@ linux-arm32le-neon:
 	$(LN) arm32le.h arch.h
 	$(MAKE) $(PROJ) \
 		JOHN_OBJS="$(JOHN_OBJS) c3_fmt.o" \
-		CFLAGS="$(CFLAGS) -mfpu=neon -DHAVE_CRYPT" \
+		CFLAGS="$(CFLAGS) -mfpu=neon -DHAVE_CRYPT -DFPGA" \
 		LDFLAGS="$(LDFLAGS) -lcrypt"
 
 linux-parallella:
