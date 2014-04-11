@@ -106,12 +106,95 @@ assign dinaS = dina_2;
 assign dinb = dinb_1;
 assign dinbS = dinb_2;
 
+always @(*)
+begin
+	wea_1 <= 0;
+	web_1 <= 0;
+	addra_1 <= 0;
+	addrb_1 <= 0;
+	dina_1 <= 0;
+	dinb_1 <= 0;
+	wea_2 <= 0;
+	web_2 <= 0;
+	addra_2 <= 0;
+	addrb_2 <= 0;
+	dina_2 <= 0;
+	dinb_2 <= 0;
+	if(state == INIT) begin
+		if(mem_delay < 'd1)
+			addra_1 <= 6'd40;
+	end
+	else if(state == P_XOR_EXP) begin
+		if(mem_delay < 'd1) begin
+			addra_1 <= P_index;
+			addrb_1 <= 6'd18 + P_index;
+		end
+		else begin
+			wea_1 <= 1;
+			addra_1 <= P_index;
+			dina_1 <= douta ^ doutb;
+		end
+	end
+	else if(state == ENCRYPT_INIT) begin
+		if(mem_delay == 'd1) begin
+			addra_1 <= 'd1;
+			addra_2[9:8] <= 2'b00;
+			addrb_2[9:8] <= 2'b01;
+			addra_2[7:0] <= L[31:24] ^ douta[31:24];
+			addrb_2[7:0] <= L[23:16] ^ douta[23:16];
+		end
+	end
+	else if(state == FEISTEL) begin
+		if(mem_delay == 0) begin
+			addra_2[9:0] <= 'h200 + L[15:8];
+			addrb_2[9:0] <= 'h300 + L[7:0];
+			if(ROUND_index == 'd15)
+				addra_1 <= 'd17;
+		end
+		else begin
+			addra_1 <= ROUND_index + 'd2;
+			addra_2[9:8] <= 2'b00;
+			addrb_2[9:8] <= 2'b01;
+			addra_2[7:0] <= ((R ^ ((tmp1 ^ doutaS) + doutbS))&32'hFF000000)>>24;
+			addrb_2[7:0] <= ((R ^ ((tmp1 ^ doutaS) + doutbS))&32'h00FF0000)>>16;
+		end
+	end
+	else if(state == STORE_L_R) begin
+		if(ptr < 'd18) begin
+			wea_1 <= 1;
+			web_1 <= 1;
+			dina_1 <= L;
+			dinb_1 <= R;
+			addra_1 <= ptr;
+			addrb_1 <= ptr + 'd1;
+		end
+		else if (ptr >= 'd18 && ptr < 'd1042) begin
+			wea_2 <= 1;
+			web_2 <= 1;
+			dina_2 <= L;
+			dinb_2 <= R;
+			addra_2 <= ptr - 'd18;
+			addrb_2 <= ptr - 'd17;
+		end
+	end
+	else if(state == P_XOR_SALT) begin
+		if(mem_delay < 'd1) begin
+			addra_1 <= P_index;
+			addrb_1 <= 6'd36 + P_index%'d4;
+		end
+		else begin
+			wea_1 <= 1;
+			addra_1 <= P_index;
+			dina_1 <= douta ^ doutb;
+		end
+	end
+end
+
 always @ (posedge clk)
 begin
 	if (start == 1) begin
 		if(state == INIT) begin
-			if(mem_delay < 'd2) begin
-				addra_1 <= 6'd40;
+			if(mem_delay < 'd1) begin
 				mem_delay <= mem_delay + 'd1;
 			end
 			else begin
@@ -126,22 +209,15 @@ begin
 		end
 		else if(state == P_XOR_EXP) begin
 			if(P_index < 5'd18) begin
-				if(mem_delay < 'd2) begin				
-					wea_1 <= 0;
-					addra_1 <= P_index;
-					addrb_1 <= 6'd18 + P_index;
+				if(mem_delay < 'd1) begin
 					mem_delay <= mem_delay + 'd1;
 				end
 				else begin
-					wea_1 <= 1;
-					addra_1 <= P_index;
-					dina_1 <= douta ^ doutb;
 					P_index <= P_index + 5'd1;
 					mem_delay <= 0;
 				end
 			end
 			else begin
-				wea_1 <= 0;
 				P_index <= 5'd0;
 				L <= 0;
 				R <= 0;
@@ -150,12 +226,7 @@ begin
 			end
 		end
 		else if(state == ENCRYPT_INIT) begin
-			if(mem_delay < 'd2) begin
-				wea_1 <= 0;
-				web_1 <= 0;		
-				wea_2 <= 0;
-				web_2 <= 0;
-				addra_1 <= 6'd0;
+			if(mem_delay < 'd1) begin
 				mem_delay <= mem_delay + 'd1;
 			end
 			else begin
@@ -167,22 +238,11 @@ begin
 		else if(state == FEISTEL) begin
 			if(ROUND_index < 15) begin
 				if(mem_delay == 0) begin
-					addra_1 <= ROUND_index + 'd1;	
-					addra_2[9:0] <= L[31:24];
-					addrb_2[9:0] <= 'h100 + L[23:16];
+					tmp1 <= doutaS + doutbS;
+					R <= R ^ douta;
 					mem_delay <= 'd1;
 				end
 				else if(mem_delay == 'd1) begin
-					addra_2[9:0] <= 'h200 + L[15:8];
-					addrb_2[9:0] <= 'h300 + L[7:0];
-					mem_delay <= 'd2;
-				end
-				else if(mem_delay == 'd2) begin
-					tmp1 <= doutaS + doutbS;
-					R <= (R ^ douta);
-					mem_delay <= 'd3;
-				end
-				else if(mem_delay == 'd3) begin
 					L <= R ^ ((tmp1 ^ doutaS) + doutbS);
 					R <= L;
 					mem_delay <= 0;
@@ -190,24 +250,12 @@ begin
 				end
 			end
 			else begin
-				if(mem_delay == 0) begin
-					addra_1 <= 'd16;	
-					addra_2[9:0] <= L[31:24];
-					addrb_2[9:0] <= 'h100 + L[23:16];
+				if(mem_delay == 'd0) begin
+					tmp1 <= doutaS + doutbS;
+					R <= R ^ douta;
 					mem_delay <= 'd1;
 				end
 				else if(mem_delay == 'd1) begin
-					addra_1 <= 'd17;
-					addra_2[9:0] <= 'h200 + L[15:8];
-					addrb_2[9:0] <= 'h300 + L[7:0];
-					mem_delay <= 'd2;
-				end
-				else if(mem_delay == 'd2) begin
-					tmp1 <= doutaS + doutbS;
-					R <= (R ^ douta);
-					mem_delay <= 'd3;
-				end
-				else if(mem_delay == 'd3) begin
 					R <= R ^ ((tmp1 ^ doutaS) + doutbS);
 					L <= L ^ douta;
 					mem_delay <= 0;
@@ -217,67 +265,36 @@ begin
 			end
 		end
 		else if(state == STORE_L_R) begin
-			if(P_or_S == 0) begin
-				if(ptr < 'd18) begin
-					wea_1 <= 1;
-					web_1 <= 1;
-					addra_1 <= ptr;
-					addrb_1 <= ptr + 'd1;
-					dina_1 <= L;
-					dinb_1 <= R;
-					ptr <= ptr + 'd2;
-					state <= ENCRYPT_INIT;
-				end
-				else begin
-					ptr <= 0;
-					P_or_S <= 1;
-				end
+			if(ptr < 'd1042) begin
+				ptr <= ptr + 'd2;
+				state <= ENCRYPT_INIT;
 			end
 			else begin
-				if(ptr < 'd1024) begin
-					wea_2 <= 1;
-					web_2 <= 1;
-					addra_2 <= ptr;
-					dina_2 <= L;
-					addrb_2 <= ptr + 'd1;
-					dinb_2 <= R;
-					ptr <= ptr + 'd2;
-					state <= ENCRYPT_INIT;
+				if(first_or_second == 0) begin
+					ptr <= 0;
+					P_or_S <= 0;
+					first_or_second <= 'b1;
+					state <= P_XOR_SALT;
 				end
 				else begin
-					if(first_or_second == 0) begin
-						ptr <= 0;
-						P_or_S <= 0;
-						first_or_second <= 'b1;
-						state <= P_XOR_SALT;
-					end
-					else begin
-						first_or_second <= 'b0;
-						state <= LOOP;
-						ptr <= 0;
-						P_or_S <= 0;
-					end
+					first_or_second <= 'b0;
+					state <= LOOP;
+					ptr <= 0;
+					P_or_S <= 0;
 				end
 			end	
 		end		
 		else if(state == P_XOR_SALT) begin
 			if(P_index < 5'd18) begin
-				if(mem_delay < 'd2) begin				
-					wea_1 <= 0;
-					addra_1 <= P_index;
-					addrb_1 <= 6'd36 + P_index%'d4;
+				if(mem_delay < 'd1) begin
 					mem_delay <= mem_delay + 'd1;
 				end
 				else begin
-					wea_1 <= 1;
-					addra_1 <= P_index;
-					dina_1 <= douta ^ doutb;
 					P_index <= P_index + 5'd1;
 					mem_delay <= 0;
 				end
 			end
 			else begin
-				wea_1 <= 0;
 				P_index <= 5'd0;
 				L <= 0;
 				R <= 0;
@@ -298,14 +315,6 @@ begin
 		end	
 	end
 	else begin
-		wea_1 <= 0;
-		web_1 <= 0;
-		wea_2 <= 0;
-		web_2 <= 0;
-		addra_1 <= 0;
-		addrb_1 <= 0;
-		addra_2 <= 0;
-		addrb_2 <= 0;
 		count <= 0;
 		state <= INIT;
 		done_reg <= 0;

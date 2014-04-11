@@ -32,7 +32,7 @@ module user_logic
 parameter C_SLV_AWIDTH                   = 32;
 parameter C_SLV_DWIDTH                   = 32;
 parameter C_NUM_MEM                      = 3;
-parameter NUM_CORES			  = 60;
+parameter NUM_CORES			  = 70;
 
 input                                     Bus2IP_Clk;
 input                                     Bus2IP_Resetn;
@@ -138,6 +138,78 @@ generate
 	end
 endgenerate
 
+generate
+	for(t=0;t<NUM_CORES;t=t+1) begin : check_done			
+		always @(posedge Bus2IP_Clk)
+		begin
+			if(bcrypt_done[t] == 1) begin
+				done[t] <= 1;
+			end
+			if(mem_handshake[0] == 'd0) begin
+				done[t] <= 0;
+			end
+		end
+	end
+endgenerate
+
+generate
+	for(t=0;t<NUM_CORES;t=t+1) begin : start_cores	
+		always @(posedge Bus2IP_Clk) 
+		begin
+			if(mem_handshake[0] == 1 && (done[t] != 'd1))begin
+				start[t] <= 1;
+			end
+			else begin
+				start[t] <= 0;
+			end
+		end
+	end
+endgenerate
+
+always @(posedge Bus2IP_Clk)
+begin
+	if(Bus2IP_Resetn == 0) begin
+		mem_read_ack_dly1 <= 0;
+		mem_read_ack_dly2 <= 0;
+	end
+	else begin
+		mem_read_ack_dly1 <= mem_read_enable;
+		mem_read_ack_dly2 <= mem_read_ack_dly1;
+	end
+end
+
+always @(*) 
+begin
+	for (i=0;i<=C_NUM_MEM-1;i=i+1) begin
+		for (byte_index=0;byte_index<=NUM_BYTE_LANES-1;byte_index=byte_index+1) begin
+			write_enable[i][byte_index] <= Bus2IP_WrCE[i] && Bus2IP_BE[byte_index];
+			data_in[i][(byte_index*8) +: 8] <= Bus2IP_Data[(byte_index*8) +: 8];
+		end
+	end
+end
+
+always @(posedge Bus2IP_Clk) 
+begin
+	if(mem_address_o[0] == 'd0) begin
+		if(write_enable[0][0] == 1) begin 
+			mem_handshake[mem_address_o[0]] <= dina_PS_o[0];
+			douta_PL <= dina_PS_o[0];
+			mem_handshake[1] <= 0;
+		end
+		else begin
+			douta_PL <= mem_handshake[0];
+		end
+	end
+	else if(mem_address_o[0] == 'd1) begin
+		douta_PL <= mem_handshake[1];
+	end
+	
+	if(done == 70'h3FFFFFFFFFFFFFFFFF) begin
+		mem_handshake[0] <= 0;
+		mem_handshake[1] <= 32'hFF;
+	end
+end
+
 always @(*)
 begin
 	for (i=0;i<=NUM_CORES;i=i+1) begin
@@ -210,36 +282,16 @@ begin
 				57: mem_address_o[58] <= Bus2IP_Addr[7:2];
 				58: mem_address_o[59] <= Bus2IP_Addr[7:2];
 				59: mem_address_o[60] <= Bus2IP_Addr[7:2];
-//				60: mem_address_o[61] <= Bus2IP_Addr[7:2];
-//				61: mem_address_o[62] <= Bus2IP_Addr[7:2];
-//				62: mem_address_o[63] <= Bus2IP_Addr[7:2];
-//				63: mem_address_o[64] <= Bus2IP_Addr[7:2];
-//				64: mem_address_o[65] <= Bus2IP_Addr[7:2];
-//				65: mem_address_o[66] <= Bus2IP_Addr[7:2];
-//				66: mem_address_o[67] <= Bus2IP_Addr[7:2];
-//				67: mem_address_o[68] <= Bus2IP_Addr[7:2];
-//				68: mem_address_o[69] <= Bus2IP_Addr[7:2];
-//				69: mem_address_o[70] <= Bus2IP_Addr[7:2];
-//				70: mem_address_o[71] <= Bus2IP_Addr[7:2];
-//				71: mem_address_o[72] <= Bus2IP_Addr[7:2];
-//				72: mem_address_o[73] <= Bus2IP_Addr[7:2];
-//				73: mem_address_o[74] <= Bus2IP_Addr[7:2];
-//				74: mem_address_o[75] <= Bus2IP_Addr[7:2];
-//				75: mem_address_o[76] <= Bus2IP_Addr[7:2];
-//				76: mem_address_o[77] <= Bus2IP_Addr[7:2];
-//				77: mem_address_o[78] <= Bus2IP_Addr[7:2];
-//				78: mem_address_o[79] <= Bus2IP_Addr[7:2];
-//				79: mem_address_o[80] <= Bus2IP_Addr[7:2];
-//				80: mem_address_o[81] <= Bus2IP_Addr[7:2];
-//				81: mem_address_o[82] <= Bus2IP_Addr[7:2];
-//				82: mem_address_o[83] <= Bus2IP_Addr[7:2];
-//				83: mem_address_o[84] <= Bus2IP_Addr[7:2];
-//				84: mem_address_o[85] <= Bus2IP_Addr[7:2];
-//				85: mem_address_o[86] <= Bus2IP_Addr[7:2];
-//				86: mem_address_o[87] <= Bus2IP_Addr[7:2];
-//				87: mem_address_o[88] <= Bus2IP_Addr[7:2];
-//				88: mem_address_o[89] <= Bus2IP_Addr[7:2];
-//				89: mem_address_o[90] <= Bus2IP_Addr[7:2];
+				60: mem_address_o[61] <= Bus2IP_Addr[7:2];
+				61: mem_address_o[62] <= Bus2IP_Addr[7:2];
+				62: mem_address_o[63] <= Bus2IP_Addr[7:2];
+				63: mem_address_o[64] <= Bus2IP_Addr[7:2];
+				64: mem_address_o[65] <= Bus2IP_Addr[7:2];
+				65: mem_address_o[66] <= Bus2IP_Addr[7:2];
+				66: mem_address_o[67] <= Bus2IP_Addr[7:2];
+				67: mem_address_o[68] <= Bus2IP_Addr[7:2];
+				68: mem_address_o[69] <= Bus2IP_Addr[7:2];
+				69: mem_address_o[70] <= Bus2IP_Addr[7:2];
 			endcase
 		end 
 		4: begin
@@ -304,63 +356,20 @@ begin
 				57: mem_address_s[58] <= Bus2IP_Addr[11:2];
 				58: mem_address_s[59] <= Bus2IP_Addr[11:2];
 				59: mem_address_s[60] <= Bus2IP_Addr[11:2];
-//				60: mem_address_s[61] <= Bus2IP_Addr[11:2];
-//				61: mem_address_s[62] <= Bus2IP_Addr[11:2];
-//				62: mem_address_s[63] <= Bus2IP_Addr[11:2];
-//				63: mem_address_s[64] <= Bus2IP_Addr[11:2];
-//				64: mem_address_s[65] <= Bus2IP_Addr[11:2];
-//				65: mem_address_s[66] <= Bus2IP_Addr[11:2];
-//				66: mem_address_s[67] <= Bus2IP_Addr[11:2];
-//				67: mem_address_s[68] <= Bus2IP_Addr[11:2];
-//				68: mem_address_s[69] <= Bus2IP_Addr[11:2];
-//				69: mem_address_s[70] <= Bus2IP_Addr[11:2];
-//				70: mem_address_s[71] <= Bus2IP_Addr[11:2];
-//				71: mem_address_s[72] <= Bus2IP_Addr[11:2];
-//				72: mem_address_s[73] <= Bus2IP_Addr[11:2];
-//				73: mem_address_s[74] <= Bus2IP_Addr[11:2];
-//				74: mem_address_s[75] <= Bus2IP_Addr[11:2];
-//				75: mem_address_s[76] <= Bus2IP_Addr[11:2];
-//				76: mem_address_s[77] <= Bus2IP_Addr[11:2];
-//				77: mem_address_s[78] <= Bus2IP_Addr[11:2];
-//				78: mem_address_s[79] <= Bus2IP_Addr[11:2];
-//				79: mem_address_s[80] <= Bus2IP_Addr[11:2];
-//				80: mem_address_s[81] <= Bus2IP_Addr[11:2];
-//				81: mem_address_s[82] <= Bus2IP_Addr[11:2];
-//				82: mem_address_s[83] <= Bus2IP_Addr[11:2];
-//				83: mem_address_s[84] <= Bus2IP_Addr[11:2];
-//				84: mem_address_s[85] <= Bus2IP_Addr[11:2];
-//				85: mem_address_s[86] <= Bus2IP_Addr[11:2];
-//				86: mem_address_s[87] <= Bus2IP_Addr[11:2];
-//				87: mem_address_s[88] <= Bus2IP_Addr[11:2];
-//				88: mem_address_s[89] <= Bus2IP_Addr[11:2];
-//				89: mem_address_s[90] <= Bus2IP_Addr[11:2];
+				60: mem_address_s[61] <= Bus2IP_Addr[11:2];
+				61: mem_address_s[62] <= Bus2IP_Addr[11:2];
+				62: mem_address_s[63] <= Bus2IP_Addr[11:2];
+				63: mem_address_s[64] <= Bus2IP_Addr[11:2];
+				64: mem_address_s[65] <= Bus2IP_Addr[11:2];
+				65: mem_address_s[66] <= Bus2IP_Addr[11:2];
+				66: mem_address_s[67] <= Bus2IP_Addr[11:2];
+				67: mem_address_s[68] <= Bus2IP_Addr[11:2];
+				68: mem_address_s[69] <= Bus2IP_Addr[11:2];
+				69: mem_address_s[70] <= Bus2IP_Addr[11:2];
 
 			endcase
 		end
 	endcase
-end
-
-always @(posedge Bus2IP_Clk)
-begin
-	if(Bus2IP_Resetn == 0) begin
-		mem_read_ack_dly1 <= 0;
-		mem_read_ack_dly2 <= 0;
-	end
-	else begin
-		mem_read_ack_dly1 <= mem_read_enable;
-		mem_read_ack_dly2 <= mem_read_ack_dly1;
-	end
-end
-
-
-always @(*) 
-begin
-	for (i=0;i<=C_NUM_MEM-1;i=i+1) begin
-		for (byte_index=0;byte_index<=NUM_BYTE_LANES-1;byte_index=byte_index+1) begin
-			write_enable[i][byte_index] <= Bus2IP_WrCE[i] && Bus2IP_BE[byte_index];
-			data_in[i][(byte_index*8) +: 8] <= Bus2IP_Data[(byte_index*8) +: 8];
-		end
-	end
 end
 
 always @(*)
@@ -435,36 +444,16 @@ begin
 				57: dina_PS_o[58] <= data_in[1];
 				58: dina_PS_o[59] <= data_in[1];
 				59: dina_PS_o[60] <= data_in[1];
-//				60: dina_PS_o[61] <= data_in[1];
-//				61: dina_PS_o[62] <= data_in[1];
-//				62: dina_PS_o[63] <= data_in[1];
-//				63: dina_PS_o[64] <= data_in[1];
-//				64: dina_PS_o[65] <= data_in[1];
-//				65: dina_PS_o[66] <= data_in[1];
-//				66: dina_PS_o[67] <= data_in[1];
-//				67: dina_PS_o[68] <= data_in[1];
-//				68: dina_PS_o[69] <= data_in[1];
-//				69: dina_PS_o[70] <= data_in[1];
-//				70: dina_PS_o[71] <= data_in[1];
-//				71: dina_PS_o[72] <= data_in[1];
-//				72: dina_PS_o[73] <= data_in[1];
-//				73: dina_PS_o[74] <= data_in[1];
-//				74: dina_PS_o[75] <= data_in[1];
-//				75: dina_PS_o[76] <= data_in[1];
-//				76: dina_PS_o[77] <= data_in[1];
-//				77: dina_PS_o[78] <= data_in[1];
-//				78: dina_PS_o[79] <= data_in[1];
-//				79: dina_PS_o[80] <= data_in[1];
-//				80: dina_PS_o[81] <= data_in[1];
-//				81: dina_PS_o[82] <= data_in[1];
-//				82: dina_PS_o[83] <= data_in[1];
-//				83: dina_PS_o[84] <= data_in[1];
-//				84: dina_PS_o[85] <= data_in[1];
-//				85: dina_PS_o[86] <= data_in[1];
-//				86: dina_PS_o[87] <= data_in[1];
-//				87: dina_PS_o[88] <= data_in[1];
-//				88: dina_PS_o[89] <= data_in[1];
-//				89: dina_PS_o[90] <= data_in[1];
+				60: dina_PS_o[61] <= data_in[1];
+				61: dina_PS_o[62] <= data_in[1];
+				62: dina_PS_o[63] <= data_in[1];
+				63: dina_PS_o[64] <= data_in[1];
+				64: dina_PS_o[65] <= data_in[1];
+				65: dina_PS_o[66] <= data_in[1];
+				66: dina_PS_o[67] <= data_in[1];
+				67: dina_PS_o[68] <= data_in[1];
+				68: dina_PS_o[69] <= data_in[1];
+				69: dina_PS_o[70] <= data_in[1];
 
 			endcase
 		end 
@@ -530,36 +519,16 @@ begin
 				57: dina_PS_s[58] <= data_in[2];
 				58: dina_PS_s[59] <= data_in[2];
 				59: dina_PS_s[60] <= data_in[2];
-//				60: dina_PS_s[61] <= data_in[2];
-//				61: dina_PS_s[62] <= data_in[2];
-//				62: dina_PS_s[63] <= data_in[2];
-//				63: dina_PS_s[64] <= data_in[2];
-//				64: dina_PS_s[65] <= data_in[2];
-//				65: dina_PS_s[66] <= data_in[2];
-//				66: dina_PS_s[67] <= data_in[2];
-//				67: dina_PS_s[68] <= data_in[2];
-//				68: dina_PS_s[69] <= data_in[2];
-//				69: dina_PS_s[70] <= data_in[2];
-//				70: dina_PS_s[71] <= data_in[2];
-//				71: dina_PS_s[72] <= data_in[2];
-//				72: dina_PS_s[73] <= data_in[2];
-//				73: dina_PS_s[74] <= data_in[2];
-//				74: dina_PS_s[75] <= data_in[2];
-//				75: dina_PS_s[76] <= data_in[2];
-//				76: dina_PS_s[77] <= data_in[2];
-//				77: dina_PS_s[78] <= data_in[2];
-//				78: dina_PS_s[79] <= data_in[2];
-//				79: dina_PS_s[80] <= data_in[2];
-//				80: dina_PS_s[81] <= data_in[2];
-//				81: dina_PS_s[82] <= data_in[2];
-//				82: dina_PS_s[83] <= data_in[2];
-//				83: dina_PS_s[84] <= data_in[2];
-//				84: dina_PS_s[85] <= data_in[2];
-//				85: dina_PS_s[86] <= data_in[2];
-//				86: dina_PS_s[87] <= data_in[2];
-//				87: dina_PS_s[88] <= data_in[2];
-//				88: dina_PS_s[89] <= data_in[2];
-//				89: dina_PS_s[90] <= data_in[2];
+				60: dina_PS_s[61] <= data_in[2];
+				61: dina_PS_s[62] <= data_in[2];
+				62: dina_PS_s[63] <= data_in[2];
+				63: dina_PS_s[64] <= data_in[2];
+				64: dina_PS_s[65] <= data_in[2];
+				65: dina_PS_s[66] <= data_in[2];
+				66: dina_PS_s[67] <= data_in[2];
+				67: dina_PS_s[68] <= data_in[2];
+				68: dina_PS_s[69] <= data_in[2];
+				69: dina_PS_s[70] <= data_in[2];
 
 			endcase
 		end
@@ -637,36 +606,16 @@ begin
 				57: wea_PS_o[58] <= write_enable[1][0];
 				58: wea_PS_o[59] <= write_enable[1][0];
 				59: wea_PS_o[60] <= write_enable[1][0];
-//				60: wea_PS_o[61] <= write_enable[1][0];
-//				61: wea_PS_o[62] <= write_enable[1][0];
-//				62: wea_PS_o[63] <= write_enable[1][0];
-//				63: wea_PS_o[64] <= write_enable[1][0];
-//				64: wea_PS_o[65] <= write_enable[1][0];
-//				65: wea_PS_o[66] <= write_enable[1][0];
-//				66: wea_PS_o[67] <= write_enable[1][0];
-//				67: wea_PS_o[68] <= write_enable[1][0];
-//				68: wea_PS_o[69] <= write_enable[1][0];
-//				69: wea_PS_o[70] <= write_enable[1][0];
-//				70: wea_PS_o[71] <= write_enable[1][0];
-//				71: wea_PS_o[72] <= write_enable[1][0];
-//				72: wea_PS_o[73] <= write_enable[1][0];
-//				73: wea_PS_o[74] <= write_enable[1][0];
-//				74: wea_PS_o[75] <= write_enable[1][0];
-//				75: wea_PS_o[76] <= write_enable[1][0];
-//				76: wea_PS_o[77] <= write_enable[1][0];
-//				77: wea_PS_o[78] <= write_enable[1][0];
-//				78: wea_PS_o[79] <= write_enable[1][0];
-//				79: wea_PS_o[80] <= write_enable[1][0];
-//				80: wea_PS_o[81] <= write_enable[1][0];
-//				81: wea_PS_o[82] <= write_enable[1][0];
-//				82: wea_PS_o[83] <= write_enable[1][0];
-//				83: wea_PS_o[84] <= write_enable[1][0];
-//				84: wea_PS_o[85] <= write_enable[1][0];
-//				85: wea_PS_o[86] <= write_enable[1][0];
-//				86: wea_PS_o[87] <= write_enable[1][0];
-//				87: wea_PS_o[88] <= write_enable[1][0];
-//				88: wea_PS_o[89] <= write_enable[1][0];
-//				89: wea_PS_o[90] <= write_enable[1][0];
+				60: wea_PS_o[61] <= write_enable[1][0];
+				61: wea_PS_o[62] <= write_enable[1][0];
+				62: wea_PS_o[63] <= write_enable[1][0];
+				63: wea_PS_o[64] <= write_enable[1][0];
+				64: wea_PS_o[65] <= write_enable[1][0];
+				65: wea_PS_o[66] <= write_enable[1][0];
+				66: wea_PS_o[67] <= write_enable[1][0];
+				67: wea_PS_o[68] <= write_enable[1][0];
+				68: wea_PS_o[69] <= write_enable[1][0];
+				69: wea_PS_o[70] <= write_enable[1][0];
 
 			endcase
 		end 
@@ -732,91 +681,21 @@ begin
 				57: wea_PS_s[58] <= write_enable[2][0];
 				58: wea_PS_s[59] <= write_enable[2][0];
 				59: wea_PS_s[60] <= write_enable[2][0];
-//				60: wea_PS_s[61] <= write_enable[2][0];
-//				61: wea_PS_s[62] <= write_enable[2][0];
-//				62: wea_PS_s[63] <= write_enable[2][0];
-//				63: wea_PS_s[64] <= write_enable[2][0];
-//				64: wea_PS_s[65] <= write_enable[2][0];
-//				65: wea_PS_s[66] <= write_enable[2][0];
-//				66: wea_PS_s[67] <= write_enable[2][0];
-//				67: wea_PS_s[68] <= write_enable[2][0];
-//				68: wea_PS_s[69] <= write_enable[2][0];
-//				69: wea_PS_s[70] <= write_enable[2][0];
-//				70: wea_PS_s[71] <= write_enable[2][0];
-//				71: wea_PS_s[72] <= write_enable[2][0];
-//				72: wea_PS_s[73] <= write_enable[2][0];
-//				73: wea_PS_s[74] <= write_enable[2][0];
-//				74: wea_PS_s[75] <= write_enable[2][0];
-//				75: wea_PS_s[76] <= write_enable[2][0];
-//				76: wea_PS_s[77] <= write_enable[2][0];
-//				77: wea_PS_s[78] <= write_enable[2][0];
-//				78: wea_PS_s[79] <= write_enable[2][0];
-//				79: wea_PS_s[80] <= write_enable[2][0];
-//				80: wea_PS_s[81] <= write_enable[2][0];
-//				81: wea_PS_s[82] <= write_enable[2][0];
-//				82: wea_PS_s[83] <= write_enable[2][0];
-//				83: wea_PS_s[84] <= write_enable[2][0];
-//				84: wea_PS_s[85] <= write_enable[2][0];
-//				85: wea_PS_s[86] <= write_enable[2][0];
-//				86: wea_PS_s[87] <= write_enable[2][0];
-//				87: wea_PS_s[88] <= write_enable[2][0];
-//				88: wea_PS_s[89] <= write_enable[2][0];
-//				89: wea_PS_s[90] <= write_enable[2][0];
+				60: wea_PS_s[61] <= write_enable[2][0];
+				61: wea_PS_s[62] <= write_enable[2][0];
+				62: wea_PS_s[63] <= write_enable[2][0];
+				63: wea_PS_s[64] <= write_enable[2][0];
+				64: wea_PS_s[65] <= write_enable[2][0];
+				65: wea_PS_s[66] <= write_enable[2][0];
+				66: wea_PS_s[67] <= write_enable[2][0];
+				67: wea_PS_s[68] <= write_enable[2][0];
+				68: wea_PS_s[69] <= write_enable[2][0];
+				69: wea_PS_s[70] <= write_enable[2][0];
 
 			endcase
 		end
 	endcase
 end
-
-generate
-	for(t=0;t<NUM_CORES;t=t+1) begin : check_done			
-		always @(posedge Bus2IP_Clk)
-		begin
-			if(bcrypt_done[t] == 1) begin
-				done[t] <= 1;
-			end
-			if(mem_handshake[0] == 'd0) begin
-				done[t] <= 0;
-			end
-		end
-	end
-endgenerate
-
-always @(posedge Bus2IP_Clk) 
-begin
-	if(mem_address_o[0] == 'd0) begin
-		if(write_enable[0][0] == 1) begin 
-			mem_handshake[mem_address_o[0]] <= dina_PS_o[0];
-			douta_PL <= dina_PS_o[0];
-			mem_handshake[1] <= 0;
-		end
-		else begin
-			douta_PL <= mem_handshake[0];
-		end
-	end
-	else if(mem_address_o[0] == 'd1) begin
-		douta_PL <= mem_handshake[1];
-	end
-	
-	if(done == 60'hFFFFFFFFFFFFFFF) begin
-		mem_handshake[0] <= 0;
-		mem_handshake[1] <= 32'hFF;
-	end
-end
-
-generate
-	for(t=0;t<NUM_CORES;t=t+1) begin : start_cores	
-		always @(posedge Bus2IP_Clk) 
-		begin
-			if(mem_handshake[0] == 1 && (done[t] != 'd1))begin
-				start[t] <= 1;
-			end
-			else begin
-				start[t] <= 0;
-			end
-		end
-	end
-endgenerate
 
 always @(*)
 begin
@@ -884,36 +763,16 @@ begin
 				57: mem_ip2bus_data <= douta_o[58];
 				58: mem_ip2bus_data <= douta_o[59];
 				59: mem_ip2bus_data <= douta_o[60];
-//				60: mem_ip2bus_data <= douta_o[61];
-//				61: mem_ip2bus_data <= douta_o[62];
-//				62: mem_ip2bus_data <= douta_o[63];
-//				63: mem_ip2bus_data <= douta_o[64];
-//				64: mem_ip2bus_data <= douta_o[65];
-//				65: mem_ip2bus_data <= douta_o[66];
-//				66: mem_ip2bus_data <= douta_o[67];
-//				67: mem_ip2bus_data <= douta_o[68];
-//				68: mem_ip2bus_data <= douta_o[69];
-//				69: mem_ip2bus_data <= douta_o[70];
-//				70: mem_ip2bus_data <= douta_o[71];
-//				71: mem_ip2bus_data <= douta_o[72];
-//				72: mem_ip2bus_data <= douta_o[73];
-//				73: mem_ip2bus_data <= douta_o[74];
-//				74: mem_ip2bus_data <= douta_o[75];
-//				75: mem_ip2bus_data <= douta_o[76];
-//				76: mem_ip2bus_data <= douta_o[77];
-//				77: mem_ip2bus_data <= douta_o[78];
-//				78: mem_ip2bus_data <= douta_o[79];
-//				79: mem_ip2bus_data <= douta_o[80];
-//				80: mem_ip2bus_data <= douta_o[81];
-//				81: mem_ip2bus_data <= douta_o[82];
-//				82: mem_ip2bus_data <= douta_o[83];
-//				83: mem_ip2bus_data <= douta_o[84];
-//				84: mem_ip2bus_data <= douta_o[85];
-//				85: mem_ip2bus_data <= douta_o[86];
-//				86: mem_ip2bus_data <= douta_o[87];
-//				87: mem_ip2bus_data <= douta_o[88];
-//				88: mem_ip2bus_data <= douta_o[89];
-//				89: mem_ip2bus_data <= douta_o[90];
+				60: mem_ip2bus_data <= douta_o[61];
+				61: mem_ip2bus_data <= douta_o[62];
+				62: mem_ip2bus_data <= douta_o[63];
+				63: mem_ip2bus_data <= douta_o[64];
+				64: mem_ip2bus_data <= douta_o[65];
+				65: mem_ip2bus_data <= douta_o[66];
+				66: mem_ip2bus_data <= douta_o[67];
+				67: mem_ip2bus_data <= douta_o[68];
+				68: mem_ip2bus_data <= douta_o[69];
+				69: mem_ip2bus_data <= douta_o[70];
 			endcase
 		end 
 		4: begin
@@ -978,36 +837,16 @@ begin
 				57: mem_ip2bus_data <= douta_s[58];
 				58: mem_ip2bus_data <= douta_s[59];
 				59: mem_ip2bus_data <= douta_s[60];
-//				60: mem_ip2bus_data <= douta_s[61];
-//				61: mem_ip2bus_data <= douta_s[62];
-//				62: mem_ip2bus_data <= douta_s[63];
-//				63: mem_ip2bus_data <= douta_s[64];
-//				64: mem_ip2bus_data <= douta_s[65];
-//				65: mem_ip2bus_data <= douta_s[66];
-//				66: mem_ip2bus_data <= douta_s[67];
-//				67: mem_ip2bus_data <= douta_s[68];
-//				68: mem_ip2bus_data <= douta_s[69];
-//				69: mem_ip2bus_data <= douta_s[70];
-//				70: mem_ip2bus_data <= douta_s[71];
-//				71: mem_ip2bus_data <= douta_s[72];
-//				72: mem_ip2bus_data <= douta_s[73];
-//				73: mem_ip2bus_data <= douta_s[74];
-//				74: mem_ip2bus_data <= douta_s[75];
-//				75: mem_ip2bus_data <= douta_s[76];
-//				76: mem_ip2bus_data <= douta_s[77];
-//				77: mem_ip2bus_data <= douta_s[78];
-//				78: mem_ip2bus_data <= douta_s[79];
-//				79: mem_ip2bus_data <= douta_s[80];
-//				80: mem_ip2bus_data <= douta_s[81];
-//				81: mem_ip2bus_data <= douta_s[82];
-//				82: mem_ip2bus_data <= douta_s[83];
-//				83: mem_ip2bus_data <= douta_s[84];
-//				84: mem_ip2bus_data <= douta_s[85];
-//				85: mem_ip2bus_data <= douta_s[86];
-//				86: mem_ip2bus_data <= douta_s[87];
-//				87: mem_ip2bus_data <= douta_s[88];
-//				88: mem_ip2bus_data <= douta_s[89];
-//				89: mem_ip2bus_data <= douta_s[90];
+				60: mem_ip2bus_data <= douta_s[61];
+				61: mem_ip2bus_data <= douta_s[62];
+				62: mem_ip2bus_data <= douta_s[63];
+				63: mem_ip2bus_data <= douta_s[64];
+				64: mem_ip2bus_data <= douta_s[65];
+				65: mem_ip2bus_data <= douta_s[66];
+				66: mem_ip2bus_data <= douta_s[67];
+				67: mem_ip2bus_data <= douta_s[68];
+				68: mem_ip2bus_data <= douta_s[69];
+				69: mem_ip2bus_data <= douta_s[70];
 
 			endcase
 		end

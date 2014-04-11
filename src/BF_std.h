@@ -42,7 +42,7 @@ typedef BF_word BF_binary[6];
 
 #ifdef FPGA
 #undef BF_Nmin
-#define BF_Nmin				60
+#define BF_Nmin				70
 #define OVERLAP_FACTOR			6
 #endif
 
