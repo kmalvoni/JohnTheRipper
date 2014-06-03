@@ -1,0 +1,311 @@
+=====================
+Opened log file
+=====================
+Created pcores directory
+=====================
+Opened log file
+=====================
+Xilinx Platform Studio (XPS)
+Xilinx EDK 14.6 Build EDK_P.68d
+
+Xilinx EDK 14.6 Build EDK_P.68d
+
+Copied /media/D/ISE14/14.6/ISE_DS/EDK/data/xflow/bitgen_zynq.ut to etc directory
+Copied file /media/D/ISE14/14.6/ISE_DS/EDK/data/xflow/fast_runtime_zynq.opt to
+etc directory
+
+Overriding IP level properties ...
+
+Computing clock values...
+
+Performing IP level DRCs on properties...
+
+Running DRC Tcl procedures for OPTION IPLEVEL_DRC_PROC...
+
+Checking platform address map ...
+Created backup of etc/bitgen.ut to etc/bitgen.ut.virtex5
+Copied /media/D/ISE14/14.6/ISE_DS/EDK/data/xflow/bitgen_zynq.ut to etc directory
+Created backup of etc/fast_runtime.opt to etc/fast_runtime.opt.virtex5
+Copied file /media/D/ISE14/14.6/ISE_DS/EDK/data/xflow/fast_runtime_zynq.opt to
+etc directory
+No changes to be saved in MHS file
+Saved project XMP file
+Saved Make file
+Xilinx Platform Studio (XPS)
+Xilinx EDK 14.6 Build EDK_P.68d
+Copyright (c) 1995-2012 Xilinx, Inc.  All rights reserved.
+
+Assigned Driver generic 1.00.a for instance processing_system7_0
+processing_system7_0 has been added to the project
+INFO:EDK:3901 - please connect bus interface, set up port and generate address manually
+Writing filter settings....
+Done writing filter settings to:
+	/home/katja/GSoC/GitHubRepo/JohnTheRipper/src/fpga/bcrypt/bcrypt.srcs/sources_1/edk/system/etc/system.filters
+Done writing Tab View settings to:
+	/home/katja/GSoC/GitHubRepo/JohnTheRipper/src/fpga/bcrypt/bcrypt.srcs/sources_1/edk/system/etc/system.gui
+Writing filter settings....
+Done writing filter settings to:
+	/home/katja/GSoC/GitHubRepo/JohnTheRipper/src/fpga/bcrypt/bcrypt.srcs/sources_1/edk/system/etc/system.filters
+Done writing Tab View settings to:
+	/home/katja/GSoC/GitHubRepo/JohnTheRipper/src/fpga/bcrypt/bcrypt.srcs/sources_1/edk/system/etc/system.gui
+Assigned Driver generic 1.00.a for instance bcrypt_0
+bcrypt_0 has been added to the project
+WARNING:EDK:2137 - Peripheral bcrypt_0 is not accessible from any processor in the system. Check Bus Interface connections and address parameters. 
+WARNING:EDK:2137 - Peripheral bcrypt_0 is not accessible from any processor in the system. Check Bus Interface connections and address parameters. 
+Assigned Driver generic 1.00.a for instance axi_interconnect_0
+axi_interconnect_0 has been added to the project
+WARNING:EDK:3712 - IPNAME: axi_interconnect, INSTANCE: axi_interconnect_0 - Frequency of the interconnect's clock port could not be determined. All IPs in the design will be considered to be asynchronous with respect to the interconnect. This will lead to more resource usage. You can avoid this by specifying the clock frequency on the port that the interconnect's clock is connected to.
+ERROR:EDK:4125 - IPNAME: axi_interconnect, INSTANCE: axi_interconnect_0, PORT: INTERCONNECT_ARESETN - ASSIGNMENT=REQUIRE is defined in the MPD. You must specify a connection in the MHS. 
+WARNING:EDK:2137 - Peripheral bcrypt_0 is not accessible from any processor in the system. Check Bus Interface connections and address parameters. 
+WARNING:EDK:3712 - IPNAME: axi_interconnect, INSTANCE: axi_interconnect_0 - Frequency of the interconnect's clock port could not be determined. All IPs in the design will be considered to be asynchronous with respect to the interconnect. This will lead to more resource usage. You can avoid this by specifying the clock frequency on the port that the interconnect's clock is connected to.
+ERROR:EDK:4125 - IPNAME: axi_interconnect, INSTANCE: axi_interconnect_0, PORT: INTERCONNECT_ARESETN - ASSIGNMENT=REQUIRE is defined in the MPD. You must specify a connection in the MHS. 
+WARNING:EDK:2137 - Peripheral bcrypt_0 is not accessible from any processor in the system. Check Bus Interface connections and address parameters. 
+WARNING:EDK:3712 - IPNAME: axi_interconnect, INSTANCE: axi_interconnect_0 - Frequency of the interconnect's clock port could not be determined. All IPs in the design will be considered to be asynchronous with respect to the interconnect. This will lead to more resource usage. You can avoid this by specifying the clock frequency on the port that the interconnect's clock is connected to.
+ERROR:EDK:4125 - IPNAME: axi_interconnect, INSTANCE: axi_interconnect_0, PORT: INTERCONNECT_ARESETN - ASSIGNMENT=REQUIRE is defined in the MPD. You must specify a connection in the MHS. 
+WARNING:EDK:2137 - Peripheral bcrypt_0 is not accessible from any processor in the system. Check Bus Interface connections and address parameters. 
+WARNING:EDK:3712 - IPNAME: axi_interconnect, INSTANCE: axi_interconnect_0 - Frequency of the interconnect's clock port could not be determined. All IPs in the design will be considered to be asynchronous with respect to the interconnect. This will lead to more resource usage. You can avoid this by specifying the clock frequency on the port that the interconnect's clock is connected to.
+WARNING:EDK:4058 - INSTANCE: processing_system7_0, BUS_INTERFACE: M_AXI_GP0 -  is not connected to any slave. 
+ERROR:EDK:4125 - IPNAME: axi_interconnect, INSTANCE: axi_interconnect_0, PORT: INTERCONNECT_ARESETN - ASSIGNMENT=REQUIRE is defined in the MPD. You must specify a connection in the MHS. 
+WARNING:EDK:2137 - Peripheral bcrypt_0 is not accessible from any processor in the system. Check Bus Interface connections and address parameters. 
+WARNING:EDK:3712 - IPNAME: axi_interconnect, INSTANCE: axi_interconnect_0 - Frequency of the interconnect's clock port could not be determined. All IPs in the design will be considered to be asynchronous with respect to the interconnect. This will lead to more resource usage. You can avoid this by specifying the clock frequency on the port that the interconnect's clock is connected to.
+ERROR:EDK:4125 - IPNAME: axi_interconnect, INSTANCE: axi_interconnect_0, PORT: INTERCONNECT_ARESETN - ASSIGNMENT=REQUIRE is defined in the MPD. You must specify a connection in the MHS. 
+ERROR:EDK:4125 - IPNAME: axi_interconnect, INSTANCE: axi_interconnect_0, PORT: INTERCONNECT_ARESETN - ASSIGNMENT=REQUIRE is defined in the MPD. You must specify a connection in the MHS. 
+Address Map for Processor processing_system7_0
+Address Map for Processor processing_system7_0
+  (0x72c00000-0x72c0ffff) bcrypt_0	axi_interconnect_0
+  (0x72c20000-0x72c2ffff) bcrypt_0	axi_interconnect_0
+  (0x72c40000-0x72c4ffff) bcrypt_0	axi_interconnect_0
+Generated Addresses Successfully
+Address Map for Processor processing_system7_0
+  (0x40000000-0x403fffff) bcrypt_0	axi_interconnect_0
+  (0x40400000-0x4040ffff) bcrypt_0	axi_interconnect_0
+  (0x40410000-0x40410fff) bcrypt_0	axi_interconnect_0
+Generated Addresses Successfully
+
+Running DRCs...
+
+Overriding IP level properties ...
+INFO:EDK:4130 - IPNAME: processing_system7, INSTANCE:processing_system7_0 - tcl is overriding PARAMETER C_S_AXI_HP0_HIGHADDR value to 0x1FFFFFFF - /media/D/ISE14/14.6/ISE_DS/EDK/hw/XilinxProcessorIPLib/pcores/processing_system7_v4_03_a/data/processing_system7_v2_1_0.mpd line 300 
+INFO:EDK:4130 - IPNAME: processing_system7, INSTANCE:processing_system7_0 - tcl is overriding PARAMETER C_S_AXI_HP1_HIGHADDR value to 0x1FFFFFFF - /media/D/ISE14/14.6/ISE_DS/EDK/hw/XilinxProcessorIPLib/pcores/processing_system7_v4_03_a/data/processing_system7_v2_1_0.mpd line 304 
+INFO:EDK:4130 - IPNAME: processing_system7, INSTANCE:processing_system7_0 - tcl is overriding PARAMETER C_S_AXI_HP2_HIGHADDR value to 0x1FFFFFFF - /media/D/ISE14/14.6/ISE_DS/EDK/hw/XilinxProcessorIPLib/pcores/processing_system7_v4_03_a/data/processing_system7_v2_1_0.mpd line 308 
+INFO:EDK:4130 - IPNAME: processing_system7, INSTANCE:processing_system7_0 - tcl is overriding PARAMETER C_S_AXI_HP3_HIGHADDR value to 0x1FFFFFFF - /media/D/ISE14/14.6/ISE_DS/EDK/hw/XilinxProcessorIPLib/pcores/processing_system7_v4_03_a/data/processing_system7_v2_1_0.mpd line 312 
+INFO:EDK:4130 - IPNAME: processing_system7, INSTANCE:processing_system7_0 - tcl is overriding PARAMETER C_NUM_F2P_INTR_INPUTS value to 1 - /media/D/ISE14/14.6/ISE_DS/EDK/hw/XilinxProcessorIPLib/pcores/processing_system7_v4_03_a/data/processing_system7_v2_1_0.mpd line 319 
+INFO:EDK:4130 - IPNAME: axi_interconnect, INSTANCE:axi_interconnect_0 - tcl is overriding PARAMETER C_BASEFAMILY value to zynq - /media/D/ISE14/14.6/ISE_DS/EDK/hw/XilinxProcessorIPLib/pcores/axi_interconnect_v1_06_a/data/axi_interconnect_v2_1_0.mpd line 81 
+
+Computing clock values...
+INFO:EDK:1432 - Frequency for Top-Level Input Clock 'processing_system7_0_PS_CLK_pin' is not specified. Clock DRCs will not be performed for IPs connected to that clock port, unless they are connected through the clock generator IP. 
+
+
+Performing IP level DRCs on properties...
+
+Running DRC Tcl procedures for OPTION IPLEVEL_DRC_PROC...
+INFO:EDK - INFO: DDR Base and High address in current configuration is 0x00000000 and 0x1FFFFFFF respectively. 
+INFO:EDK - INFO: You can modify the DDR address range accessed by Programmable Logic through the processing_system7 AXI slave interfaces. If MicroBlaze is a master on processing_system7 AXI slave interfaces, please use the top half of the address range (Base Address = 0x10000000; High Address = 0x1FFFFFFF). For all other master, any subset of the DDR address can be used. See Xilinx Answer 47167 for more information. 
+Address Map for Processor processing_system7_0
+  (0x40000000-0x403fffff) bcrypt_0	axi_interconnect_0
+  (0x40400000-0x4040ffff) bcrypt_0	axi_interconnect_0
+  (0x40410000-0x40410fff) bcrypt_0	axi_interconnect_0
+
+Checking platform address map ...
+
+Checking platform configuration ...
+IPNAME: axi_interconnect, INSTANCE: axi_interconnect_0 - 1 master(s) : 1 slave(s) 
+
+Checking port drivers...
+
+Performing Clock DRCs...
+
+Performing Reset DRCs...
+
+Overriding system level properties...
+INFO:EDK:4130 - IPNAME: processing_system7, INSTANCE:processing_system7_0 - tcl is overriding PARAMETER C_FCLK_CLK1_BUF value to FALSE - /media/D/ISE14/14.6/ISE_DS/EDK/hw/XilinxProcessorIPLib/pcores/processing_system7_v4_03_a/data/processing_system7_v2_1_0.mpd line 351 
+INFO:EDK:4130 - IPNAME: processing_system7, INSTANCE:processing_system7_0 - tcl is overriding PARAMETER C_FCLK_CLK2_BUF value to FALSE - /media/D/ISE14/14.6/ISE_DS/EDK/hw/XilinxProcessorIPLib/pcores/processing_system7_v4_03_a/data/processing_system7_v2_1_0.mpd line 352 
+INFO:EDK:4130 - IPNAME: processing_system7, INSTANCE:processing_system7_0 - tcl is overriding PARAMETER C_FCLK_CLK3_BUF value to FALSE - /media/D/ISE14/14.6/ISE_DS/EDK/hw/XilinxProcessorIPLib/pcores/processing_system7_v4_03_a/data/processing_system7_v2_1_0.mpd line 353 
+
+INFO: Setting C_RANGE_CHECK = ON for axi_interconnect axi_interconnect_0.
+INFO:EDK:4130 - IPNAME: axi_interconnect, INSTANCE:axi_interconnect_0 - tcl is overriding PARAMETER C_RANGE_CHECK value to 1 - /media/D/ISE14/14.6/ISE_DS/EDK/hw/XilinxProcessorIPLib/pcores/axi_interconnect_v1_06_a/data/axi_interconnect_v2_1_0.mpd line 149 
+
+Running system level update procedures...
+
+Running UPDATE Tcl procedures for OPTION SYSLEVEL_UPDATE_PROC...
+
+Running system level DRCs...
+
+Performing System level DRCs on properties...
+
+Running DRC Tcl procedures for OPTION SYSLEVEL_DRC_PROC...
+Done!
+Writing filter settings....
+Done writing filter settings to:
+	/home/katja/GSoC/GitHubRepo/JohnTheRipper/src/fpga/bcrypt/bcrypt.srcs/sources_1/edk/system/etc/system.filters
+Done writing Tab View settings to:
+	/home/katja/GSoC/GitHubRepo/JohnTheRipper/src/fpga/bcrypt/bcrypt.srcs/sources_1/edk/system/etc/system.gui
+=====================
+Opened log file
+=====================
+=====================
+Opened log file
+=====================
+Xilinx Platform Studio (XPS)
+Xilinx EDK 14.6 Build EDK_P.68d
+
+Xilinx EDK 14.6 Build EDK_P.68d
+
+WARNING:EDK - IPNAME: processing_system7, INSTANCE: processing_system7_0 -
+   Pre-Production version not verified on hardware for architecture 'zynq' -
+   /home/katja/GSoC/GitHubRepo/JohnTheRipper/src/fpga/bcrypt/bcrypt.srcs/sources
+   _1/edk/system/system.mhs line 28 
+WARNING:EDK - IPNAME: processing_system7, INSTANCE: processing_system7_0 -
+   Pre-Production version not verified on hardware for architecture 'zynq' -
+   /home/katja/GSoC/GitHubRepo/JohnTheRipper/src/fpga/bcrypt/bcrypt.srcs/sources
+   _1/edk/system/system.mhs line 28 
+
+Overriding IP level properties ...
+INFO:EDK - IPNAME: processing_system7, INSTANCE:processing_system7_0 - tcl is
+   overriding PARAMETER C_S_AXI_HP0_HIGHADDR value to 0x1FFFFFFF -
+   /media/D/ISE14/14.6/ISE_DS/EDK/hw/XilinxProcessorIPLib/pcores/processing_syst
+   em7_v4_03_a/data/processing_system7_v2_1_0.mpd line 300 
+INFO:EDK - IPNAME: processing_system7, INSTANCE:processing_system7_0 - tcl is
+   overriding PARAMETER C_S_AXI_HP1_HIGHADDR value to 0x1FFFFFFF -
+   /media/D/ISE14/14.6/ISE_DS/EDK/hw/XilinxProcessorIPLib/pcores/processing_syst
+   em7_v4_03_a/data/processing_system7_v2_1_0.mpd line 304 
+INFO:EDK - IPNAME: processing_system7, INSTANCE:processing_system7_0 - tcl is
+   overriding PARAMETER C_S_AXI_HP2_HIGHADDR value to 0x1FFFFFFF -
+   /media/D/ISE14/14.6/ISE_DS/EDK/hw/XilinxProcessorIPLib/pcores/processing_syst
+   em7_v4_03_a/data/processing_system7_v2_1_0.mpd line 308 
+INFO:EDK - IPNAME: processing_system7, INSTANCE:processing_system7_0 - tcl is
+   overriding PARAMETER C_S_AXI_HP3_HIGHADDR value to 0x1FFFFFFF -
+   /media/D/ISE14/14.6/ISE_DS/EDK/hw/XilinxProcessorIPLib/pcores/processing_syst
+   em7_v4_03_a/data/processing_system7_v2_1_0.mpd line 312 
+INFO:EDK - IPNAME: processing_system7, INSTANCE:processing_system7_0 - tcl is
+   overriding PARAMETER C_NUM_F2P_INTR_INPUTS value to 1 -
+   /media/D/ISE14/14.6/ISE_DS/EDK/hw/XilinxProcessorIPLib/pcores/processing_syst
+   em7_v4_03_a/data/processing_system7_v2_1_0.mpd line 319 
+INFO:EDK - IPNAME: axi_interconnect, INSTANCE:axi_interconnect_0 - tcl is
+   overriding PARAMETER C_BASEFAMILY value to zynq -
+   /media/D/ISE14/14.6/ISE_DS/EDK/hw/XilinxProcessorIPLib/pcores/axi_interconnec
+   t_v1_06_a/data/axi_interconnect_v2_1_0.mpd line 81 
+
+Computing clock values...
+INFO:EDK - Frequency for Top-Level Input Clock 'processing_system7_0_PS_CLK_pin'
+   is not specified. Clock DRCs will not be performed for IPs connected to that
+   clock port, unless they are connected through the clock generator IP. 
+
+
+Performing IP level DRCs on properties...
+
+Running DRC Tcl procedures for OPTION IPLEVEL_DRC_PROC...
+INFO:EDK - INFO: DDR Base and High address in current configuration is
+   0x00000000 and 0x1FFFFFFF respectively. 
+INFO:EDK - INFO: You can modify the DDR address range accessed by Programmable
+   Logic through the processing_system7 AXI slave interfaces. If MicroBlaze is a
+   master on processing_system7 AXI slave interfaces, please use the top half of
+   the address range (Base Address = 0x10000000; High Address = 0x1FFFFFFF). For
+   all other master, any subset of the DDR address can be used. See Xilinx
+   Answer 47167 for more information. 
+Address Map for Processor processing_system7_0
+  (0x40000000-0x403fffff) bcrypt_0	axi_interconnect_0
+  (0x40400000-0x4040ffff) bcrypt_0	axi_interconnect_0
+  (0x40410000-0x40410fff) bcrypt_0	axi_interconnect_0
+
+Checking platform address map ...
+
+Overriding IP level properties ...
+INFO:EDK - IPNAME: processing_system7, INSTANCE:processing_system7_0 - tcl is
+   overriding PARAMETER C_S_AXI_HP0_HIGHADDR value to 0x1FFFFFFF -
+   /media/D/ISE14/14.6/ISE_DS/EDK/hw/XilinxProcessorIPLib/pcores/processing_syst
+   em7_v4_03_a/data/processing_system7_v2_1_0.mpd line 300 
+INFO:EDK - IPNAME: processing_system7, INSTANCE:processing_system7_0 - tcl is
+   overriding PARAMETER C_S_AXI_HP1_HIGHADDR value to 0x1FFFFFFF -
+   /media/D/ISE14/14.6/ISE_DS/EDK/hw/XilinxProcessorIPLib/pcores/processing_syst
+   em7_v4_03_a/data/processing_system7_v2_1_0.mpd line 304 
+INFO:EDK - IPNAME: processing_system7, INSTANCE:processing_system7_0 - tcl is
+   overriding PARAMETER C_S_AXI_HP2_HIGHADDR value to 0x1FFFFFFF -
+   /media/D/ISE14/14.6/ISE_DS/EDK/hw/XilinxProcessorIPLib/pcores/processing_syst
+   em7_v4_03_a/data/processing_system7_v2_1_0.mpd line 308 
+INFO:EDK - IPNAME: processing_system7, INSTANCE:processing_system7_0 - tcl is
+   overriding PARAMETER C_S_AXI_HP3_HIGHADDR value to 0x1FFFFFFF -
+   /media/D/ISE14/14.6/ISE_DS/EDK/hw/XilinxProcessorIPLib/pcores/processing_syst
+   em7_v4_03_a/data/processing_system7_v2_1_0.mpd line 312 
+INFO:EDK - IPNAME: processing_system7, INSTANCE:processing_system7_0 - tcl is
+   overriding PARAMETER C_NUM_F2P_INTR_INPUTS value to 1 -
+   /media/D/ISE14/14.6/ISE_DS/EDK/hw/XilinxProcessorIPLib/pcores/processing_syst
+   em7_v4_03_a/data/processing_system7_v2_1_0.mpd line 319 
+INFO:EDK - IPNAME: axi_interconnect, INSTANCE:axi_interconnect_0 - tcl is
+   overriding PARAMETER C_BASEFAMILY value to zynq -
+   /media/D/ISE14/14.6/ISE_DS/EDK/hw/XilinxProcessorIPLib/pcores/axi_interconnec
+   t_v1_06_a/data/axi_interconnect_v2_1_0.mpd line 81 
+
+Computing clock values...
+INFO:EDK - Frequency for Top-Level Input Clock 'processing_system7_0_PS_CLK_pin'
+   is not specified. Clock DRCs will not be performed for IPs connected to that
+   clock port, unless they are connected through the clock generator IP. 
+
+
+Performing IP level DRCs on properties...
+
+Running DRC Tcl procedures for OPTION IPLEVEL_DRC_PROC...
+INFO:EDK - INFO: DDR Base and High address in current configuration is
+   0x00000000 and 0x1FFFFFFF respectively. 
+INFO:EDK - INFO: You can modify the DDR address range accessed by Programmable
+   Logic through the processing_system7 AXI slave interfaces. If MicroBlaze is a
+   master on processing_system7 AXI slave interfaces, please use the top half of
+   the address range (Base Address = 0x10000000; High Address = 0x1FFFFFFF). For
+   all other master, any subset of the DDR address can be used. See Xilinx
+   Answer 47167 for more information. 
+Address Map for Processor processing_system7_0
+  (0x40000000-0x403fffff) bcrypt_0	axi_interconnect_0
+  (0x40400000-0x4040ffff) bcrypt_0	axi_interconnect_0
+  (0x40410000-0x40410fff) bcrypt_0	axi_interconnect_0
+
+Checking platform address map ...
+
+Overriding IP level properties ...
+INFO:EDK - IPNAME: processing_system7, INSTANCE:processing_system7_0 - tcl is
+   overriding PARAMETER C_S_AXI_HP0_HIGHADDR value to 0x1FFFFFFF -
+   /media/D/ISE14/14.6/ISE_DS/EDK/hw/XilinxProcessorIPLib/pcores/processing_syst
+   em7_v4_03_a/data/processing_system7_v2_1_0.mpd line 300 
+INFO:EDK - IPNAME: processing_system7, INSTANCE:processing_system7_0 - tcl is
+   overriding PARAMETER C_S_AXI_HP1_HIGHADDR value to 0x1FFFFFFF -
+   /media/D/ISE14/14.6/ISE_DS/EDK/hw/XilinxProcessorIPLib/pcores/processing_syst
+   em7_v4_03_a/data/processing_system7_v2_1_0.mpd line 304 
+INFO:EDK - IPNAME: processing_system7, INSTANCE:processing_system7_0 - tcl is
+   overriding PARAMETER C_S_AXI_HP2_HIGHADDR value to 0x1FFFFFFF -
+   /media/D/ISE14/14.6/ISE_DS/EDK/hw/XilinxProcessorIPLib/pcores/processing_syst
+   em7_v4_03_a/data/processing_system7_v2_1_0.mpd line 308 
+INFO:EDK - IPNAME: processing_system7, INSTANCE:processing_system7_0 - tcl is
+   overriding PARAMETER C_S_AXI_HP3_HIGHADDR value to 0x1FFFFFFF -
+   /media/D/ISE14/14.6/ISE_DS/EDK/hw/XilinxProcessorIPLib/pcores/processing_syst
+   em7_v4_03_a/data/processing_system7_v2_1_0.mpd line 312 
+INFO:EDK - IPNAME: processing_system7, INSTANCE:processing_system7_0 - tcl is
+   overriding PARAMETER C_NUM_F2P_INTR_INPUTS value to 1 -
+   /media/D/ISE14/14.6/ISE_DS/EDK/hw/XilinxProcessorIPLib/pcores/processing_syst
+   em7_v4_03_a/data/processing_system7_v2_1_0.mpd line 319 
+INFO:EDK - IPNAME: axi_interconnect, INSTANCE:axi_interconnect_0 - tcl is
+   overriding PARAMETER C_BASEFAMILY value to zynq -
+   /media/D/ISE14/14.6/ISE_DS/EDK/hw/XilinxProcessorIPLib/pcores/axi_interconnec
+   t_v1_06_a/data/axi_interconnect_v2_1_0.mpd line 81 
+
+Computing clock values...
+INFO:EDK - Frequency for Top-Level Input Clock 'processing_system7_0_PS_CLK_pin'
+   is not specified. Clock DRCs will not be performed for IPs connected to that
+   clock port, unless they are connected through the clock generator IP. 
+
+
+Performing IP level DRCs on properties...
+
+Running DRC Tcl procedures for OPTION IPLEVEL_DRC_PROC...
+INFO:EDK - INFO: DDR Base and High address in current configuration is
+   0x00000000 and 0x1FFFFFFF respectively. 
+INFO:EDK - INFO: You can modify the DDR address range accessed by Programmable
+   Logic through the processing_system7 AXI slave interfaces. If MicroBlaze is a
+   master on processing_system7 AXI slave interfaces, please use the top half of
+   the address range (Base Address = 0x10000000; High Address = 0x1FFFFFFF). For
+   all other master, any subset of the DDR address can be used. See Xilinx
+   Answer 47167 for more information. 
+Address Map for Processor processing_system7_0
+  (0x40000000-0x403fffff) bcrypt_0	axi_interconnect_0
+  (0x40400000-0x4040ffff) bcrypt_0	axi_interconnect_0
+  (0x40410000-0x40410fff) bcrypt_0	axi_interconnect_0
+
+Checking platform address map ...

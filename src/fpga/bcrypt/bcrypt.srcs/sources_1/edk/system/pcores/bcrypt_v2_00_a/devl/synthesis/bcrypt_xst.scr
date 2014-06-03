@@ -1,0 +1,12 @@
+run
+-opt_level 2
+-opt_mode speed
+-ifmt mixed
+-ifn "/home/katja/GSoC/ZedBoard/bcrypt/bcrypt.srcs/sources_1/edk/system/pcores/bcrypt_v2_00_a/devl/synthesis/bcrypt_xst.prj"
+-top bcrypt
+-p virtex6
+-ofn "/home/katja/GSoC/ZedBoard/bcrypt/bcrypt.srcs/sources_1/edk/system/pcores/bcrypt_v2_00_a/devl/synthesis/bcrypt_xst.ngc"
+-iobuf NO
+-rtlview YES
+-hierarchy_separator /
+-work_lib bcrypt_v2_00_a

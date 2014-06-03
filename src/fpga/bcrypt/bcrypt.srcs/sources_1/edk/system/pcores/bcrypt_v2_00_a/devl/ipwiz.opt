@@ -1,0 +1,11 @@
+-batch 
+-create bcrypt 
+-ver 2.00.a 
+-dir "/home/katja/GSoC/ZedBoard/bcrypt/bcrypt.srcs/sources_1/edk/system" 
+-lang verilog 
+-bus axi4 s 
+-burst s 32 
+-arn 3 
+-xps 
+-ise 
+-driver 
