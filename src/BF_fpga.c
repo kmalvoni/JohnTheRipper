@@ -110,7 +110,7 @@ void FPGA_done()
 	close(memfd_2);
 }
 
-void FPGA_transfer_data(FPGA_data *src, direction dir, unsigned int offset)
+void FPGA_transfer_data(FPGA_data *src, direction dir)
 {
 	int memfd;
 	void *mapped_base, *mapped_dev_base;
@@ -145,11 +145,10 @@ void FPGA_transfer_data(FPGA_data *src, direction dir, unsigned int offset)
 	mapped_dev_base_1 = mapped_base_1 + (dev_base_1 & MAP_MASK_OTHERS);
 	
 	if(dir == HOST_TO_FPGA) {
-		memcpy(mapped_dev_base_1, &src->data[offset], sizeof(BF_word) * 64 * BF_N);
-		memcpy(mapped_dev_base, src->S[offset], sizeof(BF_word) * 1024 * BF_N);
+		memcpy(mapped_dev_base_1, src->data, sizeof(BF_word) * 64 * BF_N);
+		memcpy(mapped_dev_base, src->S, sizeof(BF_word) * 1024 * BF_N);
 	} else {
-		memcpy(&src->data[offset], mapped_dev_base_1, sizeof(BF_word) * 64 * BF_N);
-		memcpy(src->S[offset], mapped_dev_base, sizeof(BF_word) * 1024 * BF_N);
+		memcpy(&src->data, mapped_dev_base_1, sizeof(BF_word) * 64 * BF_N);
 	}
 
 	if (munmap(mapped_base, MAP_SIZE_S) == -1) {

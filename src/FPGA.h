@@ -12,14 +12,14 @@
 
 #define MAP_SIZE 			4096UL
 #define MAP_SIZE_S 			(4096UL * BF_N)
-#define MAP_SIZE_OTHERS 	(256UL * BF_N)
-#define BCRYPT				0x40410000
+#define MAP_SIZE_OTHERS 		(256UL * BF_N)
+#define BCRYPT				0x40420000
 #define BCRYPT_S			0x40000000
-#define BCRYPT_OTHERS		0x40400000
+#define BCRYPT_OTHERS			0x40400000
 
 #define MAP_MASK 			(MAP_SIZE - 1)
 #define MAP_MASK_S 			(MAP_SIZE_S - 1)
-#define MAP_MASK_OTHERS 	(MAP_SIZE_OTHERS - 1)
+#define MAP_MASK_OTHERS 		(MAP_SIZE_OTHERS - 1)
 #define BF_ROUNDS			16
 
 typedef BF_word BF_key[BF_ROUNDS + 2];
@@ -38,11 +38,11 @@ typedef enum {
 } direction;
 
 typedef struct {
-	other_data data[BF_N * OVERLAP_FACTOR];
-	BF_word S[BF_N * OVERLAP_FACTOR][4*0x100];
+	other_data data[BF_N];
+	BF_word S[BF_N][4*0x100];
 } FPGA_data;
 
 void FPGA_reset();
 void FPGA_start();
 void FPGA_done();
-void FPGA_transfer_data(FPGA_data *src, direction dir, unsigned int offset);
+void FPGA_transfer_data(FPGA_data *src, direction dir);

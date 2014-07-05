@@ -43,7 +43,6 @@ typedef BF_word BF_binary[6];
 #ifdef FPGA
 #undef BF_Nmin
 #define BF_Nmin				70
-#define OVERLAP_FACTOR			6
 #endif
 
 #if defined(_OPENMP) && !BF_ASM
@@ -58,7 +57,7 @@ typedef BF_word BF_binary[6];
 /*
  * BF_std_crypt() output buffer.
  */
-extern BF_binary BF_out[BF_N * OVERLAP_FACTOR];
+extern BF_binary BF_out[BF_N];
 
 /*
  * ASCII to binary conversion table, for use in BF_fmt.valid().

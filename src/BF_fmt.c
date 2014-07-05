@@ -32,7 +32,7 @@
 #define SALT_ALIGN			4
 
 #define MIN_KEYS_PER_CRYPT		BF_Nmin
-#define MAX_KEYS_PER_CRYPT		BF_N * OVERLAP_FACTOR
+#define MAX_KEYS_PER_CRYPT		BF_N
 
 static struct fmt_tests tests[] = {
 	{"$2a$05$CCCCCCCCCCCCCCCCCCCCC.E5YPO9kmyuRGyh0XouQYb4YMJKvyOeW",
@@ -82,7 +82,7 @@ static struct fmt_tests tests[] = {
 	{NULL}
 };
 
-static char saved_key[BF_N * OVERLAP_FACTOR][PLAINTEXT_LENGTH + 1];
+static char saved_key[BF_N][PLAINTEXT_LENGTH + 1];
 static char keys_mode;
 static int sign_extension_bug;
 static BF_salt saved_salt;
@@ -275,12 +275,16 @@ static int cmp_one(void *binary, int index)
 
 static int cmp_exact(char *source, int index)
 {
+#ifndef FPGA
 #if BF_mt == 1
 	BF_std_crypt_exact(index);
 #endif
 
 	return !memcmp(BF_std_get_binary(source), BF_out[index],
 	    sizeof(BF_binary));
+#else
+	return 1;
+#endif
 }
 
 struct fmt_main fmt_BF = {

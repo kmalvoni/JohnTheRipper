@@ -40,6 +40,8 @@ parameter DONE				= 4'b0111;
 parameter SET				= 4'b1000;
 parameter LOAD_S			= 4'b1100;
 parameter UPDATE_L_R			= 4'b1101;
+parameter XOR_SALT			= 4'b1110;
+parameter FINAL			= 4'b1111;
 
 parameter C_MST_NATIVE_DATA_WIDTH      = 32;
 parameter C_LENGTH_WIDTH               = 12;
@@ -76,14 +78,15 @@ reg tmp_cnt = 0;
 reg first_or_second = 0;
 reg P_or_S = 0;
 reg [1:0] mem_delay = 0;
+reg which_xor = 0;
+reg prep = 1;
+reg enc_final = 0;
 reg [31:0] count = 0;
 
 reg [31:0] L = 0;
 reg [31:0] R = 0;
 reg [31:0] tmp1 = 0;
 reg [3:0] state = INIT;
-reg [3:0] substate1 = SET;
-reg [3:0] substate3 = 0;
 		
 reg wea_1, web_1, wea_2, web_2;
 reg [5:0] addra_1, addrb_1;
@@ -123,6 +126,28 @@ begin
 	if(state == INIT) begin
 		if(mem_delay < 'd1)
 			addra_1 <= 6'd40;
+	end	
+	else if(state == XOR_SALT) begin
+		if(ptr < 'd18) begin
+			if(mem_delay < 'd1) begin
+				addra_1 <= 6'd36 + (ptr & 'd2);
+				addrb_1 <= 6'd36 + (ptr & 'd2) + 1;
+			end
+		end
+		else if(ptr < 'd1042) begin
+			if(which_xor == 0) begin
+				if(mem_delay < 'd1) begin
+					addra_1 <= 6'd38;
+					addrb_1 <= 6'd39;
+				end
+			end
+			else begin
+				if(mem_delay < 'd1) begin
+					addra_1 <= 6'd36;
+					addrb_1 <= 6'd37;
+				end
+			end
+		end
 	end
 	else if(state == P_XOR_EXP) begin
 		if(mem_delay < 'd1) begin
@@ -188,6 +213,14 @@ begin
 			dina_1 <= douta ^ doutb;
 		end
 	end
+	else if(state == DONE) begin
+		wea_1 <= 1;
+		web_1 <= 1;
+		dina_1 <= L;
+		dinb_1 <= R;
+		addra_1 <= 'd0;
+		addrb_1 <= 'd1;
+	end
 end
 
 always @ (posedge clk)
@@ -205,7 +238,36 @@ begin
 		end
 		else if(state == SET) begin
 			count <= 'd1 << count;
-			state <= P_XOR_EXP;
+			L <= 0;
+			R <= 0;
+			ptr <= 0;
+			which_xor <= 0;
+			state <= XOR_SALT;
+		end
+		else if(state == XOR_SALT) begin
+			if(ptr < 'd18) begin
+				if(mem_delay < 'd1) begin
+					mem_delay <= mem_delay + 'd1;
+				end
+				else begin
+					mem_delay <= 0;
+					L <= L ^ douta;
+					R <= R ^ doutb;
+					state <= ENCRYPT_INIT;
+				end
+			end
+			else begin
+				if(mem_delay < 'd1) begin
+					mem_delay <= mem_delay + 'd1;
+				end
+				else begin
+					mem_delay <= 0;
+					L <= L ^ douta;
+					R <= R ^ doutb;
+					which_xor <= ~which_xor;
+					state <= ENCRYPT_INIT;
+				end
+			end
 		end
 		else if(state == P_XOR_EXP) begin
 			if(P_index < 5'd18) begin
@@ -260,27 +322,39 @@ begin
 					L <= L ^ douta;
 					mem_delay <= 0;
 					ROUND_index <= 5'd0;
-					state <= STORE_L_R;
+					if(enc_final == 0)
+						state <= STORE_L_R;
+					else
+						state <= FINAL;
 				end
 			end
 		end
 		else if(state == STORE_L_R) begin
 			if(ptr < 'd1042) begin
 				ptr <= ptr + 'd2;
-				state <= ENCRYPT_INIT;
+				if(prep == 1)
+					state <= XOR_SALT;
+				else
+					state <= ENCRYPT_INIT;
 			end
 			else begin
-				if(first_or_second == 0) begin
-					ptr <= 0;
-					P_or_S <= 0;
-					first_or_second <= 'b1;
-					state <= P_XOR_SALT;
+				if(prep == 1) begin
+					state <= P_XOR_EXP;
+					prep <= 0;
 				end
 				else begin
-					first_or_second <= 'b0;
-					state <= LOOP;
-					ptr <= 0;
-					P_or_S <= 0;
+					if(first_or_second == 0) begin
+						ptr <= 0;
+						P_or_S <= 0;
+						first_or_second <= 'b1;
+						state <= P_XOR_SALT;
+					end
+					else begin
+						first_or_second <= 'b0;
+						state <= LOOP;
+						ptr <= 0;
+						P_or_S <= 0;
+					end
 				end
 			end	
 		end		
@@ -307,10 +381,25 @@ begin
 				state <= P_XOR_EXP;
 			end
 			else begin
-				state <= DONE;
+				state <= FINAL;
+				enc_final <= 1;
+				count <= 32'd64;
+				L <= 32'h4F727068;
+				R <= 32'h65616E42;
 			end
 		end
-		else if (state == DONE) begin
+		else if(state == FINAL) begin
+			if(count > 0) begin
+				count <= count - 32'd1;
+				state <= ENCRYPT_INIT;
+			end
+			else begin
+				state <= DONE;
+				enc_final <= 0;
+				prep <= 1;
+			end
+		end
+		else if(state == DONE) begin
 			done_reg <= 1;
 		end	
 	end
