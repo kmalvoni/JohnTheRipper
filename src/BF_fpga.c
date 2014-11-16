@@ -150,6 +150,15 @@ void FPGA_transfer_data(FPGA_data *src, direction dir)
 	} else {
 		memcpy(&src->data, mapped_dev_base_1, sizeof(BF_word) * 64 * BF_N);
 	}
+	
+	//~ int i = 0;
+	//~ int j = 0;
+	//~ if(dir == FPGA_TO_HOST) {
+		//~ for(i = 0; i < BF_N; i++) {
+			//~ for(j = 0; j < 1; j++)
+				//~ printf("P[%d][%d] = 0x%08x\n", i, j, src->data[i/2].data[i%2].P[j]);
+		//~ }
+	//~ }
 
 	if (munmap(mapped_base, MAP_SIZE_S) == -1) {
 		printf("Can't unmap memory from user space.\n");

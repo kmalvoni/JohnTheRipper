@@ -37,6 +37,7 @@
 
 #ifdef FPGA
 #include "FPGA.h"
+#include <sys/time.h>
 #endif
 
 BF_binary BF_out[BF_N];
@@ -647,27 +648,38 @@ void BF_std_crypt(BF_salt *salt, int n)
 #ifdef FPGA
 		FPGA_data src;
 		BF_word rounds;
+		struct timeval start, end;
 #endif
 
 
 #ifdef FPGA
 		for_each_ti() {
 			memcpy(src.S INDEX, BF_init_state.S, sizeof(src.S INDEX));
-			memcpy(src.data INDEX.P, BF_init_key INDEX, sizeof(src.data INDEX.P));
-			memcpy(src.data INDEX.exp_key, &BF_exp_key INDEX, sizeof(src.data INDEX.exp_key));
-			memcpy(src.data INDEX.salt, salt, sizeof(src.data INDEX.salt));
+			memcpy(src.data[index/2].data[index%2].P, BF_init_key INDEX, sizeof(BF_init_key INDEX));
+			memcpy(src.data[index/2].data[index%2].exp_key, &BF_exp_key INDEX, sizeof(BF_exp_key INDEX));
+			memcpy(src.data[index/2].data[index%2].salt, salt, sizeof(BF_salt));
 			rounds = (BF_word)salt->rounds;
-			memcpy(&src.data INDEX.rounds, &rounds, sizeof(BF_word));
+			memcpy(&src.data[index/2].data[index%2].rounds, &rounds, sizeof(BF_word));
 		}
 
 		FPGA_reset();
+		gettimeofday(&start, NULL);
 		FPGA_transfer_data(&src, HOST_TO_FPGA);
+		gettimeofday(&end, NULL);
+		//printf("FPGA_transfer_data (HOST_TO_FPGA): %ld us\n", (((end.tv_sec - start.tv_sec)*1000000L + end.tv_usec) - start.tv_usec)/1000L);
 		FPGA_start();
+		gettimeofday(&start, NULL);
 		FPGA_done();
+		gettimeofday(&end, NULL);
+		//printf("compute: %ld us\n", (((end.tv_sec - start.tv_sec)*1000000L + end.tv_usec) - start.tv_usec)/1000L);
+		gettimeofday(&start, NULL);
 		FPGA_transfer_data(&src, FPGA_TO_HOST);
+		gettimeofday(&end, NULL);
+		//printf("FPGA_transfer_data (FPGA_TO_HOST): %ld us\n", (((end.tv_sec - start.tv_sec)*1000000L + end.tv_usec) - start.tv_usec)/1000L);
 		
 		for_each_ti() {
-			memcpy(&BF_current INDEX.P, src.data INDEX.P, sizeof(src.data INDEX.P));
+			memcpy(&BF_current INDEX.P, src.data[index/2].data[index%2].P, 
+				sizeof(src.data[index/2].data[index%2].P));
 			BF_out INDEX0[0] = BF_current INDEX.P[0];
 			BF_out INDEX0[1] = BF_current INDEX.P[1];
 		}

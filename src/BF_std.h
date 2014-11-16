@@ -42,7 +42,7 @@ typedef BF_word BF_binary[6];
 
 #ifdef FPGA
 #undef BF_Nmin
-#define BF_Nmin				70
+#define BF_Nmin				56
 #endif
 
 #if defined(_OPENMP) && !BF_ASM

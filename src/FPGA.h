@@ -29,8 +29,12 @@ typedef struct {
 	BF_key exp_key;
 	BF_word salt[4];
 	BF_word rounds;
-	BF_word dummy[23];
 } other_data;
+
+typedef struct {
+	other_data data[2];
+	BF_word dummy[46];
+} tiny_bram;
 
 typedef enum {
 	HOST_TO_FPGA,
@@ -38,7 +42,7 @@ typedef enum {
 } direction;
 
 typedef struct {
-	other_data data[BF_N];
+	tiny_bram data[(BF_N/2)];
 	BF_word S[BF_N][4*0x100];
 } FPGA_data;
 

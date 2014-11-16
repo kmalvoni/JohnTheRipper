@@ -9,4 +9,5 @@ lib axi_slave_burst_v1_00_a  all
 lib bcrypt_v2_00_a user_logic verilog
 lib bcrypt_v2_00_a bcrypt_loop verilog
 lib bcrypt_v2_00_a ram verilog
+lib bcrypt_v2_00_a ram_initialized verilog
 lib bcrypt_v2_00_a bcrypt vhdl
