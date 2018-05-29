@@ -200,34 +200,34 @@ begin
 		1: mem_address_o[0] <= Bus2IP_Addr[11:2];
 		2: begin
 			case(core_select_others)
-				0: mem_address_o[1] <= Bus2IP_Addr[9:2];
-				1: mem_address_o[2] <= Bus2IP_Addr[9:2];
-				2: mem_address_o[3] <= Bus2IP_Addr[9:2];
-				3: mem_address_o[4] <= Bus2IP_Addr[9:2];
-				4: mem_address_o[5] <= Bus2IP_Addr[9:2];
-				5: mem_address_o[6] <= Bus2IP_Addr[9:2];
-				6: mem_address_o[7] <= Bus2IP_Addr[9:2];
-				7: mem_address_o[8] <= Bus2IP_Addr[9:2];
-				8: mem_address_o[9] <= Bus2IP_Addr[9:2];
-				9: mem_address_o[10] <= Bus2IP_Addr[9:2];
-				10: mem_address_o[11] <= Bus2IP_Addr[9:2];
-				11: mem_address_o[12] <= Bus2IP_Addr[9:2];
-				12: mem_address_o[13] <= Bus2IP_Addr[9:2];
-				13: mem_address_o[14] <= Bus2IP_Addr[9:2];
-				14: mem_address_o[15] <= Bus2IP_Addr[9:2];
-				15: mem_address_o[16] <= Bus2IP_Addr[9:2];
-				16: mem_address_o[17] <= Bus2IP_Addr[9:2];
-				17: mem_address_o[18] <= Bus2IP_Addr[9:2];
-				18: mem_address_o[19] <= Bus2IP_Addr[9:2];
-				19: mem_address_o[20] <= Bus2IP_Addr[9:2];
-				20: mem_address_o[21] <= Bus2IP_Addr[9:2];
-				21: mem_address_o[22] <= Bus2IP_Addr[9:2];
-				22: mem_address_o[23] <= Bus2IP_Addr[9:2];
-				23: mem_address_o[24] <= Bus2IP_Addr[9:2];
-				24: mem_address_o[25] <= Bus2IP_Addr[9:2];
-				25: mem_address_o[26] <= Bus2IP_Addr[9:2];
-				26: mem_address_o[27] <= Bus2IP_Addr[9:2];
-				27: mem_address_o[28] <= Bus2IP_Addr[9:2];
+				0: mem_address_o[1] <= Bus2IP_Addr[8:2];
+				1: mem_address_o[2] <= Bus2IP_Addr[8:2];
+				2: mem_address_o[3] <= Bus2IP_Addr[8:2];
+				3: mem_address_o[4] <= Bus2IP_Addr[8:2];
+				4: mem_address_o[5] <= Bus2IP_Addr[8:2];
+				5: mem_address_o[6] <= Bus2IP_Addr[8:2];
+				6: mem_address_o[7] <= Bus2IP_Addr[8:2];
+				7: mem_address_o[8] <= Bus2IP_Addr[8:2];
+				8: mem_address_o[9] <= Bus2IP_Addr[8:2];
+				9: mem_address_o[10] <= Bus2IP_Addr[8:2];
+				10: mem_address_o[11] <= Bus2IP_Addr[8:2];
+				11: mem_address_o[12] <= Bus2IP_Addr[8:2];
+				12: mem_address_o[13] <= Bus2IP_Addr[8:2];
+				13: mem_address_o[14] <= Bus2IP_Addr[8:2];
+				14: mem_address_o[15] <= Bus2IP_Addr[8:2];
+				15: mem_address_o[16] <= Bus2IP_Addr[8:2];
+				16: mem_address_o[17] <= Bus2IP_Addr[8:2];
+				17: mem_address_o[18] <= Bus2IP_Addr[8:2];
+				18: mem_address_o[19] <= Bus2IP_Addr[8:2];
+				19: mem_address_o[20] <= Bus2IP_Addr[8:2];
+				20: mem_address_o[21] <= Bus2IP_Addr[8:2];
+				21: mem_address_o[22] <= Bus2IP_Addr[8:2];
+				22: mem_address_o[23] <= Bus2IP_Addr[8:2];
+				23: mem_address_o[24] <= Bus2IP_Addr[8:2];
+				24: mem_address_o[25] <= Bus2IP_Addr[8:2];
+				25: mem_address_o[26] <= Bus2IP_Addr[8:2];
+				26: mem_address_o[27] <= Bus2IP_Addr[8:2];
+				27: mem_address_o[28] <= Bus2IP_Addr[8:2];
 			endcase
 		end 
 	endcase
