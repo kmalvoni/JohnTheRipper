@@ -94,7 +94,7 @@ assign mem_select = Bus2IP_CS;
 assign mem_read_enable = Bus2IP_RdCE;
 assign mem_read_ack = (mem_read_ack_dly1 && (!mem_read_ack_dly2));
 assign mem_write_ack = Bus2IP_WrCE;
-assign core_select_others = (mem_select == 'd2) ? Bus2IP_Addr[16 : 10] : 0;
+assign core_select_others = (mem_select == 'd2) ? Bus2IP_Addr[15 : 9] : 0;
 
 genvar t;
 generate
